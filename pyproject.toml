@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graph-lasso-laplacian-regime-indicator"
+version = "0.1.0"
+description = "Rolling graphical-lasso Laplacian features for financial regime research."
+requires-python = ">=3.10"
+dependencies = [
+    "networkx",
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "scipy",
+]
+
+[project.optional-dependencies]
+data = [
+    "pandas-datareader",
+    "yfinance",
+]
+test = [
+    "pytest",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
