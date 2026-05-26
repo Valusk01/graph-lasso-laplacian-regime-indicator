@@ -72,11 +72,16 @@ def compute_market_drawdown(price_series: pd.Series) -> pd.Series:
 def compute_correlation_regime_score(
     returns: pd.DataFrame,
     window: int = 126,
+    use_absolute: bool = False,
 ) -> pd.Series:
     """Compute rolling average pairwise asset correlation.
 
-    The score summarizes whether assets are moving together more uniformly, a
-    common but imperfect benchmark for systemic connectedness.
+    The default score uses raw off-diagonal correlations, which measure
+    same-direction co-movement across assets. If use_absolute=True, the score
+    uses absolute off-diagonal correlations, which measure dependence strength
+    regardless of sign. The absolute version can be useful for mixed asset
+    universes containing equities, bonds, commodities, credit, and defensive
+    assets.
     """
 
     if not isinstance(returns, pd.DataFrame):
@@ -99,11 +104,21 @@ def compute_correlation_regime_score(
         correlation = window_returns.corr()
         mask = np.triu(np.ones(correlation.shape, dtype=bool), k=1)
         pairwise_values = correlation.to_numpy(dtype=float)[mask]
+
+        if use_absolute:
+            pairwise_values = np.abs(pairwise_values)
+
         finite_values = pairwise_values[np.isfinite(pairwise_values)]
         values.append(float(finite_values.mean()) if finite_values.size else np.nan)
         index.append(numeric_returns.index[end_position - 1])
 
-    return pd.Series(values, index=pd.Index(index, name=returns.index.name), name="average_correlation")
+    score_name = "average_absolute_correlation" if use_absolute else "average_correlation"
+
+    return pd.Series(
+        values,
+        index=pd.Index(index, name=returns.index.name),
+        name=score_name,
+    )
 
 
 def create_stress_labels(
@@ -148,27 +163,33 @@ def create_stress_labels(
     label_columns: list[str] = []
 
     if "vix" in output:
-        output["vix_stress_label"] = (output["vix"] >= vix_threshold).astype("Int64")
+        output["vix_stress_label"] = _threshold_label(
+            output["vix"],
+            output["vix"] >= vix_threshold,
+        )
         label_columns.append("vix_stress_label")
 
     if "drawdown" in output:
-        output["drawdown_stress_label"] = (
-            output["drawdown"] <= drawdown_threshold
-        ).astype("Int64")
+        output["drawdown_stress_label"] = _threshold_label(
+            output["drawdown"],
+            output["drawdown"] <= drawdown_threshold,
+        )
         label_columns.append("drawdown_stress_label")
 
     if "realized_volatility" in output:
         threshold = output["realized_volatility"].quantile(vol_quantile)
-        output["realized_volatility_stress_label"] = (
-            output["realized_volatility"] >= threshold
-        ).astype("Int64")
+        output["realized_volatility_stress_label"] = _threshold_label(
+            output["realized_volatility"],
+            output["realized_volatility"] >= threshold,
+        )
         label_columns.append("realized_volatility_stress_label")
 
     if "average_correlation" in output:
         threshold = output["average_correlation"].quantile(correlation_quantile)
-        output["correlation_stress_label"] = (
-            output["average_correlation"] >= threshold
-        ).astype("Int64")
+        output["correlation_stress_label"] = _threshold_label(
+            output["average_correlation"],
+            output["average_correlation"] >= threshold,
+        )
         label_columns.append("correlation_stress_label")
 
     output["systemic_stress_label"] = (
@@ -217,3 +238,8 @@ def _as_numeric_series(series: pd.Series, name: str) -> pd.Series:
 
     numeric = pd.to_numeric(series, errors="coerce").replace([np.inf, -np.inf], np.nan)
     return numeric.rename(name)
+
+def _threshold_label(series: pd.Series, condition: pd.Series) -> pd.Series:
+    label = condition.astype("Int64")
+    label = label.mask(series.isna(), pd.NA)
+    return label

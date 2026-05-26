@@ -14,6 +14,15 @@ from graph_regime.data import (
     load_returns_csv,
     prices_to_returns,
 )
+from graph_regime.evaluation import (
+    align_indicator_and_benchmarks,
+    classify_regimes_by_quantile,
+    compute_contemporaneous_diagnostics,
+    compute_event_study,
+    compute_forward_targets,
+    evaluate_predictive_power,
+    summarize_regime_classes,
+)
 from graph_regime.features import compute_graph_features, compute_laplacian_spectrum
 from graph_regime.graph_lasso import (
     fit_graphical_lasso,
@@ -31,8 +40,13 @@ from graph_regime.preprocessing import clean_returns, standardize_window
 
 __all__ = [
     "adjacency_to_laplacian",
+    "align_indicator_and_benchmarks",
+    "classify_regimes_by_quantile",
     "clean_returns",
+    "compute_contemporaneous_diagnostics",
     "compute_correlation_regime_score",
+    "compute_event_study",
+    "compute_forward_targets",
     "compute_graph_features",
     "compute_laplacian_spectrum",
     "compute_market_drawdown",
@@ -42,6 +56,7 @@ __all__ = [
     "create_stress_labels",
     "download_vix",
     "download_yfinance_prices",
+    "evaluate_predictive_power",
     "fit_graphical_lasso",
     "load_fred_recession_indicator",
     "load_prices_csv",
@@ -50,4 +65,5 @@ __all__ = [
     "precision_to_partial_correlation",
     "prices_to_returns",
     "standardize_window",
+    "summarize_regime_classes",
 ]

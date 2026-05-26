@@ -20,9 +20,12 @@ regime indicator.
   features, and a composite regime indicator.
 - Phase 2: data loading helpers, optional public-data download helpers, and
   benchmark stress variables for later empirical comparison.
+- Phase 3: empirical evaluation helpers for contemporaneous benchmark
+  diagnostics, forward-target predictive diagnostics, event-study extraction,
+  and regime-class summaries.
 
-Not implemented yet: dashboards, notebooks, external benchmark evaluation,
-predictive testing, robustness checks, or final empirical conclusions.
+Not implemented yet: dashboards, notebooks, plotting, robustness checks, or
+final empirical conclusions.
 
 ## Installation
 
@@ -60,3 +63,23 @@ returns and benchmark stress labels, and writes:
 
 Downloaded market data and generated outputs are intentionally ignored by git
 and should not be committed.
+
+## Run The Empirical Evaluation Example
+
+```bash
+.venv/bin/python examples/run_empirical_evaluation_example.py
+```
+
+The Phase 3 example tries to download public Yahoo Finance data, compute the
+graph regime indicator, build benchmark stress labels, run contemporaneous and
+predictive diagnostics, and write:
+
+- `outputs/tables/graph_regime_features.csv`
+- `outputs/tables/graph_regime_indicator.csv`
+- `outputs/tables/benchmark_stress_labels.csv`
+- `outputs/tables/contemporaneous_diagnostics.csv`
+- `outputs/tables/predictive_diagnostics.csv`
+- `outputs/tables/regime_class_summary.csv`
+
+Online market data and generated output tables are ignored by git and should not
+be committed.

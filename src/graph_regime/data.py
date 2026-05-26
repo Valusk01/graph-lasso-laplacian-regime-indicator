@@ -55,9 +55,10 @@ def prices_to_returns(prices: pd.DataFrame, method: ReturnMethod = "log") -> pd.
     if numeric_prices.empty:
         raise ValueError("prices must contain at least one numeric asset column.")
 
+    if (numeric_prices <= 0).to_numpy().any():
+        raise ValueError("price returns require all observed prices to be positive.")
+
     if method == "log":
-        if (numeric_prices <= 0).to_numpy().any():
-            raise ValueError("log returns require all observed prices to be positive.")
         returns = np.log(numeric_prices / numeric_prices.shift(1))
     else:
         returns = numeric_prices / numeric_prices.shift(1) - 1.0
@@ -98,6 +99,7 @@ def download_yfinance_prices(
             progress=False,
             group_by="column",
             threads=False,
+            timeout=20,
         )
     except Exception as exc:
         raise RuntimeError(
