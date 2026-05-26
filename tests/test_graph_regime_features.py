@@ -32,6 +32,7 @@ def test_compute_graph_features_contains_required_keys_and_valid_connectivity() 
     assert REQUIRED_FEATURE_KEYS.issubset(features)
     assert features["algebraic_connectivity"] >= -1e-10
     assert np.isnan(features["laplacian_frobenius_change"])
+    assert np.isnan(features["modularity"])
 
 
 def test_compute_graph_features_reports_frobenius_change_with_previous_laplacian() -> None:
@@ -59,6 +60,27 @@ def test_compute_graph_features_reports_frobenius_change_with_previous_laplacian
     )
 
     assert features["laplacian_frobenius_change"] > 0.0
+
+
+def test_compute_graph_features_skips_modularity_by_default() -> None:
+    adjacency = np.array(
+        [
+            [0.0, 0.4, 0.1],
+            [0.4, 0.0, 0.3],
+            [0.1, 0.3, 0.0],
+        ]
+    )
+    laplacian = adjacency_to_laplacian(adjacency)
+
+    features = compute_graph_features(
+        adjacency,
+        laplacian,
+        compute_modularity=False,
+    )
+
+    assert "modularity" in features
+    assert np.isnan(features["modularity"])
+
 
 def test_disconnected_graph_has_zero_algebraic_connectivity() -> None:
     adjacency = np.array(

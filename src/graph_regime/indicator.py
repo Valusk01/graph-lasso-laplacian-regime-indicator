@@ -34,6 +34,7 @@ def compute_rolling_graph_features(
     min_non_missing: float = 0.95,
     partial_corr_threshold: float = 1e-8,
     max_iter: int = 200,
+    compute_modularity: bool = False,
 ) -> pd.DataFrame:
     """Estimate rolling graphical-lasso graphs and Laplacian features.
 
@@ -45,6 +46,11 @@ def compute_rolling_graph_features(
     instability from per-window hyperparameter selection. The partial-correlation
     threshold is also fixed across windows so that changes in edge structure are
     not driven by changing filtering rules.
+
+    Modularity is disabled by default because NetworkX community detection can
+    be computationally expensive, unavailable, or unstable in repeated rolling
+    windows. When disabled, modularity is reported as NaN and its regime
+    indicator z-score is neutralized to zero.
     """
 
     if window <= 1:
@@ -101,6 +107,7 @@ def compute_rolling_graph_features(
             adjacency=adjacency,
             laplacian=laplacian,
             previous_laplacian=previous_laplacian,
+            compute_modularity=compute_modularity,
         )
 
         rows.append(feature_row)

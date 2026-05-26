@@ -85,6 +85,20 @@ def test_compute_forward_targets_use_future_values_only() -> None:
     assert targets["forward_return_sum_3d"].tail(3).isna().all()
 
 
+def test_compute_forward_targets_requires_complete_future_horizon() -> None:
+    returns = pd.Series(
+        [0.01, 0.02, np.nan, 0.04],
+        index=pd.date_range("2020-01-01", periods=4),
+    )
+
+    targets = compute_forward_targets(returns, horizons=[2])
+
+    assert np.isnan(targets.iloc[0]["forward_return_sum_2d"])
+    assert np.isnan(targets.iloc[0]["forward_realized_volatility_2d"])
+    assert np.isnan(targets.iloc[0]["forward_absolute_return_sum_2d"])
+    assert np.isnan(targets.iloc[0]["forward_max_drawdown_2d"])
+
+
 def test_evaluate_predictive_power_reports_positive_correlation_and_beta() -> None:
     index = pd.date_range("2020-01-01", periods=6)
     indicator = pd.Series([0.0, 1.0, 2.0, 3.0, 4.0, 5.0], index=index)
@@ -137,6 +151,15 @@ def test_classify_regimes_by_quantile_labels_and_rejects_invalid_quantiles() -> 
 
     with pytest.raises(ValueError):
         classify_regimes_by_quantile(indicator, low_quantile=0.90, high_quantile=0.80)
+
+
+def test_classify_regimes_by_quantile_constant_indicator_is_normal() -> None:
+    indicator = pd.Series([2.0, 2.0, 2.0, np.nan, 2.0])
+
+    classes = classify_regimes_by_quantile(indicator)
+
+    assert classes.dropna().eq("normal").all()
+    assert pd.isna(classes.iloc[3])
 
 
 def test_summarize_regime_classes_with_returns() -> None:

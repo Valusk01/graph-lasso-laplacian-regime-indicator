@@ -85,9 +85,10 @@ spectral mode.
 largest_laplacian_eigenvalue_share: the largest eigenvalue divided by total
 Laplacian spectral mass. Higher values suggest more concentrated systemic
 structure.
-modularity: estimated community separation when NetworkX community tools are
-available. Lower modularity is consistent with less segmented, less
-diversified market structure.
+modularity: optional estimated community separation when NetworkX community
+tools are available. Lower modularity is consistent with less segmented, less
+diversified market structure. It is disabled by default for speed and stability
+because community detection can dominate unit-test and rolling-pipeline runtime.
 laplacian_frobenius_change: window-to-window topology turnover. The first
 window is reported as NaN because no previous Laplacian exists.
 
@@ -102,6 +103,13 @@ RI_t =
 Z-scores are computed across the available time series of each feature, not
 inside each rolling window. Constant or unavailable components receive a neutral
 zero z-score.
+
+When modularity is disabled or unavailable, it is reported as NaN and
+z_modularity is neutralized to zero. In that default fast configuration, the
+base regime indicator is driven by average graph strength, algebraic
+connectivity, largest Laplacian eigenvalue share, and Laplacian Frobenius
+change. Researchers who want the full modularity component can explicitly set
+compute_modularity=True.
 
 High values of the regime indicator are intended to represent a more systemic,
 more connected, less diversified market state.

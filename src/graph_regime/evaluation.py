@@ -177,7 +177,7 @@ def compute_forward_targets(
                 continue
 
             observed_future = future.dropna()
-            if observed_future.empty:
+            if len(observed_future) < horizon:
                 volatility_values.append(np.nan)
                 return_sum_values.append(np.nan)
                 absolute_sum_values.append(np.nan)
@@ -305,6 +305,14 @@ def classify_regimes_by_quantile(
     classes = pd.Series(pd.NA, index=indicator.index, dtype="object", name="regime_class")
     valid = numeric_indicator.notna()
     classes.loc[valid] = "normal"
+
+    if not np.isfinite(high_threshold) or not np.isfinite(low_threshold):
+        return classes
+
+    if np.isclose(high_threshold, low_threshold):
+        classes.loc[valid] = "normal"
+        return classes
+
     classes.loc[valid & (numeric_indicator <= low_threshold)] = "low_systemic_connectedness"
     classes.loc[valid & (numeric_indicator >= high_threshold)] = "high_systemic_connectedness"
 

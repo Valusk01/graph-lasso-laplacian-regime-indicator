@@ -1,13 +1,14 @@
 import numpy as np
 import pandas as pd
 
+import graph_regime.indicator as indicator_module
 from graph_regime.indicator import (
     compute_regime_indicator,
     compute_rolling_graph_features,
 )
 
 
-def _synthetic_returns(n_observations: int = 36, n_assets: int = 5) -> pd.DataFrame:
+def _synthetic_returns(n_observations: int = 10, n_assets: int = 3) -> pd.DataFrame:
     rng = np.random.default_rng(7)
     market = rng.normal(scale=0.8, size=(n_observations, 1))
     idiosyncratic = rng.normal(scale=0.5, size=(n_observations, n_assets))
@@ -18,17 +19,31 @@ def _synthetic_returns(n_observations: int = 36, n_assets: int = 5) -> pd.DataFr
     return pd.DataFrame(values, index=index, columns=columns)
 
 
-def test_compute_rolling_graph_features_shape_columns_and_no_infinite_values() -> None:
+def test_compute_rolling_graph_features_shape_columns_and_no_infinite_values(monkeypatch) -> None:
     returns = _synthetic_returns()
-    window = 12
+    window = 5
+
+    def fake_fit_graphical_lasso(window_frame, alpha, max_iter=200):
+        n_assets = window_frame.shape[1]
+        covariance = np.eye(n_assets)
+        precision = np.eye(n_assets)
+        precision[precision == 0.0] = -0.2
+        return covariance, precision
+
+    monkeypatch.setattr(
+        indicator_module,
+        "fit_graphical_lasso",
+        fake_fit_graphical_lasso,
+    )
 
     features = compute_rolling_graph_features(
         returns,
         window=window,
-        alpha=0.2,
+        alpha=0.8,
         min_non_missing=1.0,
         partial_corr_threshold=1e-6,
-        max_iter=300,
+        max_iter=50,
+        compute_modularity=False,
     )
 
     expected_columns = {
@@ -45,6 +60,7 @@ def test_compute_rolling_graph_features_shape_columns_and_no_infinite_values() -
     assert features.shape[0] == len(returns) - window + 1
     assert expected_columns.issubset(features.columns)
     assert not np.isinf(features.to_numpy(dtype=float)).any()
+    assert features["modularity"].isna().all()
 
     indicator = compute_regime_indicator(features)
     assert "regime_indicator" in indicator.columns

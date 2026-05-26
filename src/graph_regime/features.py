@@ -31,6 +31,7 @@ def compute_graph_features(
     adjacency: np.ndarray,
     laplacian: np.ndarray,
     previous_laplacian: np.ndarray | None = None,
+    compute_modularity: bool = False,
 ) -> dict[str, float]:
     """Compute connectedness features for one rolling asset-return graph.
 
@@ -43,8 +44,11 @@ def compute_graph_features(
     blocks. largest_laplacian_eigenvalue and its share summarize dominance of a
     global spectral mode. modularity is high when the graph separates into
     communities, so lower modularity is consistent with less diversified,
-    system-wide stress. laplacian_frobenius_change is NaN for the first window
-    and then measures topology turnover relative to the previous window.
+    system-wide stress. Modularity is optional because community detection can
+    be computationally expensive, unavailable, or unstable; when it is not
+    computed it is reported as NaN and receives a neutral z-score in the regime
+    indicator. laplacian_frobenius_change is NaN for the first window and then
+    measures topology turnover relative to the previous window.
     """
 
     adjacency_array = np.asarray(adjacency, dtype=float)
@@ -87,13 +91,15 @@ def compute_graph_features(
             raise ValueError("previous_laplacian must match laplacian shape.")
         laplacian_frobenius_change = float(np.linalg.norm(laplacian_array - previous, ord="fro"))
 
+    modularity = _compute_modularity(adjacency_array) if compute_modularity else np.nan
+
     return {
         "average_graph_strength": average_node_strength,
         "weighted_edge_density": weighted_edge_density,
         "algebraic_connectivity": algebraic_connectivity,
         "largest_laplacian_eigenvalue": largest_laplacian_eigenvalue,
         "largest_laplacian_eigenvalue_share": largest_laplacian_eigenvalue_share,
-        "modularity": _compute_modularity(adjacency_array),
+        "modularity": modularity,
         "laplacian_frobenius_change": laplacian_frobenius_change,
         "number_of_edges": number_of_edges,
         "average_node_strength": average_node_strength,
