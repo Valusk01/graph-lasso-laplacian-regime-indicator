@@ -1,0 +1,12 @@
+networkx
+numpy
+pandas
+scikit-learn
+scipy
+
+# Optional data layer dependencies
+yfinance
+pandas-datareader
+
+# Testing
+pytest
