@@ -229,6 +229,49 @@ sample-specific crisis periods, or other omitted variables. Phase 3 produces
 diagnostic tables for later research; robustness checks, out-of-sample
 validation, and causal interpretation remain future work.
 
+Phase 4 Visual Diagnostics Workflow
+
+Phase 4 adds reusable matplotlib plotting functions and an example workflow
+that writes diagnostic figures and tables under outputs/. The purpose is visual
+inspection of whether the graph-lasso Laplacian regime indicator behaves like a
+systemic stress indicator. The plots are exploratory evidence, not proof that
+the indicator is causal or fully validated.
+
+The regime indicator time-series plot shows the indicator through time and can
+mark benchmark stress periods. If the hypothesis is plausible, high indicator
+values should often appear near market stress windows, while still allowing for
+false positives and missed events.
+
+Benchmark overlay plots place the regime indicator beside continuous variables
+such as VIX, drawdown, realized volatility, average rolling correlation, and
+average absolute rolling correlation. These plots help inspect co-movement,
+lead-lag patterns, and periods where graph topology and conventional stress
+measures disagree.
+
+The graph feature panel shows the underlying rolling graph-Laplacian features
+that feed the indicator. It should be used to check whether average graph
+strength, algebraic connectivity, largest Laplacian eigenvalue share, Laplacian
+Frobenius change, and optional modularity are moving in economically sensible
+ways rather than being dominated by one unstable component.
+
+The stress/non-stress boxplot compares the distribution of the regime indicator
+across benchmark stress labels. Clear separation supports the idea that the
+indicator distinguishes stress from calmer periods, but overlap is expected in
+real market data.
+
+The RI-versus-forward-risk scatter plot compares today's indicator with a
+forward target such as future realized volatility. A positive fitted slope can
+motivate further predictive testing, but it does not establish tradability,
+causality, or out-of-sample reliability.
+
+The regime-class bar chart summarizes return or risk metrics by quantile-based
+indicator classes. It is useful for checking whether high connectedness regimes
+are associated with higher volatility or larger absolute returns.
+
+Visual diagnostics are intentionally not robustness checks. Phase 5 should still
+test sensitivity to asset universes, window lengths, fixed alpha values,
+thresholds, data cleaning choices, and alternative benchmark definitions.
+
 Interpretation of Graphical Lasso
 
 Graphical lasso estimates a sparse inverse covariance matrix, also called a
@@ -257,12 +300,12 @@ topological features
 Current Validation Status
 
 The project currently provides the machinery needed to estimate the graph-based
-regime indicator, construct benchmark stress variables, and produce empirical
-diagnostic tables.
+regime indicator, construct benchmark stress variables, produce empirical
+diagnostic tables, and generate visual diagnostic figures.
 
-It is not yet a validated recession, crisis, drawdown, or VIX signal. Visual
-diagnostics, robustness checks, dashboards, notebooks, and final empirical
-conclusions are intentionally left for later phases.
+It is not yet a validated recession, crisis, drawdown, or VIX signal.
+Robustness checks, dashboards, notebooks, and final empirical conclusions are
+intentionally left for later phases.
 
 The Phase 3 diagnostics can be used to evaluate whether the graph-lasso
 Laplacian regime indicator:
@@ -273,8 +316,8 @@ distinguishes stress from non-stress periods;
 contains predictive information for future volatility, drawdowns, or
 correlation spikes.
 
-Later phases should focus on robustness, visual diagnostics, and careful
-interpretation of these empirical results.
+Phase 5 should focus on robustness and careful interpretation of these empirical
+results.
 
 
 ---

@@ -23,9 +23,11 @@ regime indicator.
 - Phase 3: empirical evaluation helpers for contemporaneous benchmark
   diagnostics, forward-target predictive diagnostics, event-study extraction,
   and regime-class summaries.
+- Phase 4: reusable matplotlib visual diagnostics and a reproducible workflow
+  that writes diagnostic tables and figures.
 
-Not implemented yet: dashboards, notebooks, plotting, robustness checks, or
-final empirical conclusions.
+Not implemented yet: dashboards, notebooks, robustness checks, or final
+empirical conclusions.
 
 ## Installation
 
@@ -33,6 +35,8 @@ final empirical conclusions.
 python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[test]"
 ```
+
+The base package includes `matplotlib` for visual diagnostics.
 
 For optional online data examples:
 
@@ -82,4 +86,39 @@ predictive diagnostics, and write:
 - `outputs/tables/regime_class_summary.csv`
 
 Online market data and generated output tables are ignored by git and should not
+be committed.
+
+## Run The Visual Diagnostics Workflow
+
+```bash
+.venv/bin/python examples/run_visual_diagnostics_workflow.py
+```
+
+The Phase 4 workflow tries to download public Yahoo Finance data, compute the
+graph regime indicator, run empirical diagnostics, and write the same Phase 3
+tables plus visual diagnostics.
+
+Output tables:
+
+- `outputs/tables/graph_regime_features.csv`
+- `outputs/tables/graph_regime_indicator.csv`
+- `outputs/tables/benchmark_stress_labels.csv`
+- `outputs/tables/contemporaneous_diagnostics.csv`
+- `outputs/tables/predictive_diagnostics.csv`
+- `outputs/tables/regime_class_summary.csv`
+
+Output figures:
+
+- `outputs/figures/regime_indicator.png`
+- `outputs/figures/regime_indicator_vs_vix.png`
+- `outputs/figures/regime_indicator_vs_drawdown.png`
+- `outputs/figures/regime_indicator_vs_realized_volatility.png`
+- `outputs/figures/regime_indicator_vs_average_correlation.png`
+- `outputs/figures/regime_indicator_vs_average_absolute_correlation.png`
+- `outputs/figures/graph_feature_panel.png`
+- `outputs/figures/stress_boxplot.png`
+- `outputs/figures/ri_vs_forward_realized_volatility_21d.png`
+- `outputs/figures/regime_class_volatility.png`
+
+Generated figures and tables under `outputs/` are ignored by git and should not
 be committed.
