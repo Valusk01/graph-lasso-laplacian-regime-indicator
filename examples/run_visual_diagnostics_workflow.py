@@ -29,6 +29,8 @@ from graph_regime.benchmarks import (  # noqa: E402
 from graph_regime.data import (  # noqa: E402
     download_vix,
     download_yfinance_prices,
+    load_prices_csv,
+    load_returns_csv,
     prices_to_returns,
 )
 from graph_regime.evaluation import (  # noqa: E402
@@ -38,7 +40,12 @@ from graph_regime.evaluation import (  # noqa: E402
     evaluate_predictive_power,
     summarize_regime_classes,
 )
-from graph_regime.indicator import compute_regime_indicator, compute_rolling_graph_features  # noqa: E402
+from graph_regime.indicator import (  # noqa: E402
+    GRAPH_LASSO_DIAGNOSTIC_COLUMNS,
+    compute_regime_indicator,
+    compute_rolling_graph_features,
+    summarize_graph_lasso_convergence,
+)
 from graph_regime.plotting import (  # noqa: E402
     plot_feature_panel,
     plot_indicator_vs_benchmark,
@@ -89,11 +96,23 @@ def main() -> int:
         graph_features = compute_rolling_graph_features(
             returns,
             window=126,
-            alpha=0.05,
+            alpha=0.10,
             min_non_missing=0.95,
             partial_corr_threshold=1e-6,
-            max_iter=300,
+            max_iter=1000,
+            tol=1e-4,
+            enet_tol=1e-4,
+            mode="cd",
             compute_modularity=False,
+            on_non_convergence="warn",
+        )
+        convergence_summary = summarize_graph_lasso_convergence(graph_features)
+        print(
+            "GraphicalLasso convergence: "
+            f"{convergence_summary['n_converged']}/{convergence_summary['n_windows']} "
+            f"windows converged "
+            f"({convergence_summary['convergence_rate']:.1%}); "
+            f"{convergence_summary['n_non_converged']} non-converged."
         )
         graph_indicator = compute_regime_indicator(graph_features)
 
@@ -141,6 +160,9 @@ def main() -> int:
     graph_features.to_csv(table_dir / "graph_regime_features.csv")
     graph_indicator.to_csv(table_dir / "graph_regime_indicator.csv")
     benchmark_labels.to_csv(table_dir / "benchmark_stress_labels.csv")
+    graph_features[GRAPH_LASSO_DIAGNOSTIC_COLUMNS].to_csv(
+        table_dir / "graph_lasso_convergence_diagnostics.csv",
+    )
     contemporaneous_diagnostics.to_csv(
         table_dir / "contemporaneous_diagnostics.csv",
         index=False,
@@ -148,75 +170,85 @@ def main() -> int:
     predictive_diagnostics.to_csv(table_dir / "predictive_diagnostics.csv", index=False)
     regime_class_summary.to_csv(table_dir / "regime_class_summary.csv")
 
-    _save_and_close(
-        plot_regime_indicator(
+    _try_save_and_close(
+        "regime_indicator",
+        lambda: plot_regime_indicator(
             graph_indicator,
             stress_labels=benchmark_labels,
             output_path=figure_dir / "regime_indicator.png",
         ),
     )
-    _save_and_close(
-        plot_indicator_vs_benchmark(
+    _try_save_and_close(
+        "regime_indicator_vs_vix",
+        lambda: plot_indicator_vs_benchmark(
             graph_indicator,
             benchmark_labels["vix"],
             benchmark_name="vix",
             output_path=figure_dir / "regime_indicator_vs_vix.png",
         ),
     )
-    _save_and_close(
-        plot_indicator_vs_benchmark(
+    _try_save_and_close(
+        "regime_indicator_vs_drawdown",
+        lambda: plot_indicator_vs_benchmark(
             graph_indicator,
             benchmark_labels["drawdown"],
             benchmark_name="drawdown",
             output_path=figure_dir / "regime_indicator_vs_drawdown.png",
         ),
     )
-    _save_and_close(
-        plot_indicator_vs_benchmark(
+    _try_save_and_close(
+        "regime_indicator_vs_realized_volatility",
+        lambda: plot_indicator_vs_benchmark(
             graph_indicator,
             benchmark_labels["realized_volatility"],
             benchmark_name="realized_volatility",
             output_path=figure_dir / "regime_indicator_vs_realized_volatility.png",
         ),
     )
-    _save_and_close(
-        plot_indicator_vs_benchmark(
+    _try_save_and_close(
+        "regime_indicator_vs_average_correlation",
+        lambda: plot_indicator_vs_benchmark(
             graph_indicator,
             benchmark_labels["average_correlation"],
             benchmark_name="average_correlation",
             output_path=figure_dir / "regime_indicator_vs_average_correlation.png",
         ),
     )
-    _save_and_close(
-        plot_indicator_vs_benchmark(
+    _try_save_and_close(
+        "regime_indicator_vs_average_absolute_correlation",
+        lambda: plot_indicator_vs_benchmark(
             graph_indicator,
             benchmark_labels["average_absolute_correlation"],
             benchmark_name="average_absolute_correlation",
             output_path=figure_dir / "regime_indicator_vs_average_absolute_correlation.png",
         ),
     )
-    _save_and_close(
-        plot_feature_panel(
+    _try_save_and_close(
+        "graph_feature_panel",
+        lambda: plot_feature_panel(
             graph_features,
             output_path=figure_dir / "graph_feature_panel.png",
         ),
     )
-    _save_and_close(
-        plot_stress_boxplot(
+    _try_save_and_close(
+        "stress_boxplot",
+        lambda: plot_stress_boxplot(
             aligned,
             output_path=figure_dir / "stress_boxplot.png",
         ),
     )
-    _save_and_close(
-        plot_scatter_indicator_target(
+    _try_save_and_close(
+        "ri_vs_forward_realized_volatility_21d",
+        lambda: plot_scatter_indicator_target(
             graph_indicator["regime_indicator"],
             forward_targets["forward_realized_volatility_21d"],
             target_name="forward_realized_volatility_21d",
             output_path=figure_dir / "ri_vs_forward_realized_volatility_21d.png",
         ),
     )
-    _save_and_close(
-        plot_regime_class_returns(
+    _try_save_and_close(
+        "regime_class_volatility",
+        lambda: plot_regime_class_returns(
             regime_class_summary,
             metric="volatility",
             output_path=figure_dir / "regime_class_volatility.png",
@@ -225,10 +257,20 @@ def main() -> int:
 
     print(f"Saved tables to {table_dir}")
     print(f"Saved figures to {figure_dir}")
+    print(
+        "Saved convergence diagnostics to "
+        f"{table_dir / 'graph_lasso_convergence_diagnostics.csv'}"
+    )
     return 0
 
 
-def _save_and_close(fig) -> None:
+def _try_save_and_close(plot_name: str, figure_factory) -> None:
+    try:
+        fig = figure_factory()
+    except (ValueError, KeyError) as exc:
+        print(f"Skipped {plot_name}: {exc}")
+        return
+
     plt.close(fig)
 
 

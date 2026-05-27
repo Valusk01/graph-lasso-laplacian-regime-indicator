@@ -17,7 +17,7 @@ regime indicator.
 
 - Phase 1: core graph-regime engine for rolling graphical-lasso precision
   estimation, partial-correlation adjacency construction, Laplacian spectral
-  features, and a composite regime indicator.
+  features, convergence diagnostics, and a composite regime indicator.
 - Phase 2: data loading helpers, optional public-data download helpers, and
   benchmark stress variables for later empirical comparison.
 - Phase 3: empirical evaluation helpers for contemporaneous benchmark
@@ -81,6 +81,7 @@ predictive diagnostics, and write:
 - `outputs/tables/graph_regime_features.csv`
 - `outputs/tables/graph_regime_indicator.csv`
 - `outputs/tables/benchmark_stress_labels.csv`
+- `outputs/tables/graph_lasso_convergence_diagnostics.csv`
 - `outputs/tables/contemporaneous_diagnostics.csv`
 - `outputs/tables/predictive_diagnostics.csv`
 - `outputs/tables/regime_class_summary.csv`
@@ -103,6 +104,7 @@ Output tables:
 - `outputs/tables/graph_regime_features.csv`
 - `outputs/tables/graph_regime_indicator.csv`
 - `outputs/tables/benchmark_stress_labels.csv`
+- `outputs/tables/graph_lasso_convergence_diagnostics.csv`
 - `outputs/tables/contemporaneous_diagnostics.csv`
 - `outputs/tables/predictive_diagnostics.csv`
 - `outputs/tables/regime_class_summary.csv`

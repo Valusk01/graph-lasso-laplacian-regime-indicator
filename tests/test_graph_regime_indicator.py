@@ -1,8 +1,11 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 import graph_regime.indicator as indicator_module
+from graph_regime.graph_lasso import GraphicalLassoFit
 from graph_regime.indicator import (
+    GRAPH_LASSO_DIAGNOSTIC_COLUMNS,
     compute_regime_indicator,
     compute_rolling_graph_features,
 )
@@ -23,17 +26,36 @@ def test_compute_rolling_graph_features_shape_columns_and_no_infinite_values(mon
     returns = _synthetic_returns()
     window = 5
 
-    def fake_fit_graphical_lasso(window_frame, alpha, max_iter=200):
+    def fake_fit_graphical_lasso_with_diagnostics(
+        window_frame,
+        alpha,
+        max_iter=200,
+        tol=1e-4,
+        enet_tol=1e-4,
+        mode="cd",
+        assume_centered=True,
+    ):
         n_assets = window_frame.shape[1]
         covariance = np.eye(n_assets)
         precision = np.eye(n_assets)
         precision[precision == 0.0] = -0.2
-        return covariance, precision
+        return GraphicalLassoFit(
+            covariance=covariance,
+            precision=precision,
+            converged=True,
+            n_iter=3,
+            warning_messages=(),
+            alpha=alpha,
+            max_iter=max_iter,
+            tol=tol,
+            enet_tol=enet_tol,
+            mode=mode,
+        )
 
     monkeypatch.setattr(
         indicator_module,
-        "fit_graphical_lasso",
-        fake_fit_graphical_lasso,
+        "fit_graphical_lasso_with_diagnostics",
+        fake_fit_graphical_lasso_with_diagnostics,
     )
 
     features = compute_rolling_graph_features(
@@ -44,6 +66,9 @@ def test_compute_rolling_graph_features_shape_columns_and_no_infinite_values(mon
         partial_corr_threshold=1e-6,
         max_iter=50,
         compute_modularity=False,
+        tol=1e-4,
+        enet_tol=1e-4,
+        mode="cd",
     )
 
     expected_columns = {
@@ -59,12 +84,115 @@ def test_compute_rolling_graph_features_shape_columns_and_no_infinite_values(mon
     }
     assert features.shape[0] == len(returns) - window + 1
     assert expected_columns.issubset(features.columns)
-    assert not np.isinf(features.to_numpy(dtype=float)).any()
+    assert set(GRAPH_LASSO_DIAGNOSTIC_COLUMNS).issubset(features.columns)
+    numeric_features = features.select_dtypes(include=[np.number])
+    assert not np.isinf(numeric_features.to_numpy(dtype=float)).any()
     assert features["modularity"].isna().all()
+    assert features["graph_lasso_converged"].all()
+    assert (features["graph_lasso_n_iter"] == 3).all()
+    assert (features["graph_lasso_alpha"] == 0.8).all()
+    assert (features["graph_lasso_warning_count"] == 0).all()
 
     indicator = compute_regime_indicator(features)
     assert "regime_indicator" in indicator.columns
     assert np.isfinite(indicator["regime_indicator"].to_numpy()).all()
+
+
+def test_compute_rolling_graph_features_rejects_invalid_non_convergence_policy() -> None:
+    returns = _synthetic_returns()
+
+    with pytest.raises(ValueError, match="on_non_convergence"):
+        compute_rolling_graph_features(
+            returns,
+            window=5,
+            alpha=0.8,
+            on_non_convergence="bad",
+        )
+
+
+def test_compute_rolling_graph_features_raises_on_non_convergence(monkeypatch) -> None:
+    returns = _synthetic_returns(n_observations=6, n_assets=3)
+
+    def fake_non_converged_fit(
+        window_frame,
+        alpha,
+        max_iter=200,
+        tol=1e-4,
+        enet_tol=1e-4,
+        mode="cd",
+        assume_centered=True,
+    ):
+        n_assets = window_frame.shape[1]
+        return GraphicalLassoFit(
+            covariance=np.eye(n_assets),
+            precision=np.eye(n_assets),
+            converged=False,
+            n_iter=max_iter,
+            warning_messages=("did not converge",),
+            alpha=alpha,
+            max_iter=max_iter,
+            tol=tol,
+            enet_tol=enet_tol,
+            mode=mode,
+        )
+
+    monkeypatch.setattr(
+        indicator_module,
+        "fit_graphical_lasso_with_diagnostics",
+        fake_non_converged_fit,
+    )
+
+    with pytest.raises(RuntimeError, match="did not converge"):
+        compute_rolling_graph_features(
+            returns,
+            window=5,
+            alpha=0.8,
+            on_non_convergence="raise",
+        )
+
+
+def test_compute_rolling_graph_features_warns_once_on_non_convergence(monkeypatch) -> None:
+    returns = _synthetic_returns(n_observations=6, n_assets=3)
+
+    def fake_non_converged_fit(
+        window_frame,
+        alpha,
+        max_iter=200,
+        tol=1e-4,
+        enet_tol=1e-4,
+        mode="cd",
+        assume_centered=True,
+    ):
+        n_assets = window_frame.shape[1]
+        return GraphicalLassoFit(
+            covariance=np.eye(n_assets),
+            precision=np.eye(n_assets),
+            converged=False,
+            n_iter=max_iter,
+            warning_messages=("did not converge",),
+            alpha=alpha,
+            max_iter=max_iter,
+            tol=tol,
+            enet_tol=enet_tol,
+            mode=mode,
+        )
+
+    monkeypatch.setattr(
+        indicator_module,
+        "fit_graphical_lasso_with_diagnostics",
+        fake_non_converged_fit,
+    )
+
+    with pytest.warns(RuntimeWarning, match="did not converge"):
+        features = compute_rolling_graph_features(
+            returns,
+            window=5,
+            alpha=0.8,
+            on_non_convergence="warn",
+        )
+
+    assert not features["graph_lasso_converged"].any()
+    assert (features["graph_lasso_warning_count"] == 1).all()
 
 
 def test_compute_regime_indicator_adds_z_scores_and_handles_constant_columns() -> None:

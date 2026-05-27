@@ -25,12 +25,16 @@ from graph_regime.evaluation import (
 )
 from graph_regime.features import compute_graph_features, compute_laplacian_spectrum
 from graph_regime.graph_lasso import (
+    GraphicalLassoFit,
     fit_graphical_lasso,
+    fit_graphical_lasso_with_diagnostics,
     precision_to_partial_correlation,
 )
 from graph_regime.indicator import (
+    GRAPH_LASSO_DIAGNOSTIC_COLUMNS,
     compute_regime_indicator,
     compute_rolling_graph_features,
+    summarize_graph_lasso_convergence,
 )
 from graph_regime.laplacian import (
     adjacency_to_laplacian,
@@ -58,6 +62,9 @@ __all__ = [
     "download_yfinance_prices",
     "evaluate_predictive_power",
     "fit_graphical_lasso",
+    "fit_graphical_lasso_with_diagnostics",
+    "GRAPH_LASSO_DIAGNOSTIC_COLUMNS",
+    "GraphicalLassoFit",
     "load_fred_recession_indicator",
     "load_prices_csv",
     "load_returns_csv",
@@ -66,4 +73,5 @@ __all__ = [
     "prices_to_returns",
     "standardize_window",
     "summarize_regime_classes",
+    "summarize_graph_lasso_convergence",
 ]

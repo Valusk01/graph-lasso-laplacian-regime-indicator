@@ -26,7 +26,12 @@ from graph_regime.evaluation import (  # noqa: E402
     evaluate_predictive_power,
     summarize_regime_classes,
 )
-from graph_regime.indicator import compute_regime_indicator, compute_rolling_graph_features  # noqa: E402
+from graph_regime.indicator import (  # noqa: E402
+    GRAPH_LASSO_DIAGNOSTIC_COLUMNS,
+    compute_regime_indicator,
+    compute_rolling_graph_features,
+    summarize_graph_lasso_convergence,
+)
 
 
 ETF_UNIVERSE = [
@@ -58,10 +63,23 @@ def main() -> int:
         graph_features = compute_rolling_graph_features(
             returns,
             window=126,
-            alpha=0.05,
+            alpha=0.10,
             min_non_missing=0.95,
             partial_corr_threshold=1e-6,
-            max_iter=300,
+            max_iter=1000,
+            tol=1e-4,
+            enet_tol=1e-4,
+            mode="cd",
+            compute_modularity=False,
+            on_non_convergence="warn",
+        )
+        convergence_summary = summarize_graph_lasso_convergence(graph_features)
+        print(
+            "GraphicalLasso convergence: "
+            f"{convergence_summary['n_converged']}/{convergence_summary['n_windows']} "
+            f"windows converged "
+            f"({convergence_summary['convergence_rate']:.1%}); "
+            f"{convergence_summary['n_non_converged']} non-converged."
         )
         graph_indicator = compute_regime_indicator(graph_features)
 
@@ -108,6 +126,9 @@ def main() -> int:
     graph_features.to_csv(output_dir / "graph_regime_features.csv")
     graph_indicator.to_csv(output_dir / "graph_regime_indicator.csv")
     benchmark_labels.to_csv(output_dir / "benchmark_stress_labels.csv")
+    graph_features[GRAPH_LASSO_DIAGNOSTIC_COLUMNS].to_csv(
+        output_dir / "graph_lasso_convergence_diagnostics.csv",
+    )
     contemporaneous_diagnostics.to_csv(
         output_dir / "contemporaneous_diagnostics.csv",
         index=False,
@@ -118,6 +139,10 @@ def main() -> int:
     print(f"Saved graph features to {output_dir / 'graph_regime_features.csv'}")
     print(f"Saved graph indicator to {output_dir / 'graph_regime_indicator.csv'}")
     print(f"Saved benchmark stress labels to {output_dir / 'benchmark_stress_labels.csv'}")
+    print(
+        "Saved convergence diagnostics to "
+        f"{output_dir / 'graph_lasso_convergence_diagnostics.csv'}"
+    )
     print(
         "Saved contemporaneous diagnostics to "
         f"{output_dir / 'contemporaneous_diagnostics.csv'}",

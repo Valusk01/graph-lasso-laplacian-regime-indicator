@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 
 from graph_regime.features import compute_graph_features
 from graph_regime.graph_lasso import (
-    fit_graphical_lasso,
+    fit_graphical_lasso_with_diagnostics,
     precision_to_partial_correlation,
 )
 from graph_regime.laplacian import (
@@ -25,6 +27,18 @@ REGIME_FEATURES = {
     "laplacian_frobenius_change": 1.0,
 }
 
+GRAPH_LASSO_DIAGNOSTIC_COLUMNS = [
+    "graph_lasso_converged",
+    "graph_lasso_n_iter",
+    "graph_lasso_alpha",
+    "graph_lasso_max_iter",
+    "graph_lasso_tol",
+    "graph_lasso_enet_tol",
+    "graph_lasso_mode",
+    "graph_lasso_warning_count",
+    "graph_lasso_warning_message",
+]
+
 
 def compute_rolling_graph_features(
     returns: pd.DataFrame,
@@ -35,6 +49,10 @@ def compute_rolling_graph_features(
     partial_corr_threshold: float = 1e-8,
     max_iter: int = 200,
     compute_modularity: bool = False,
+    tol: float = 1e-4,
+    enet_tol: float = 1e-4,
+    mode: str = "cd",
+    on_non_convergence: str = "record",
 ) -> pd.DataFrame:
     """Estimate rolling graphical-lasso graphs and Laplacian features.
 
@@ -51,6 +69,12 @@ def compute_rolling_graph_features(
     be computationally expensive, unavailable, or unstable in repeated rolling
     windows. When disabled, modularity is reported as NaN and its regime
     indicator z-score is neutralized to zero.
+
+    Graphical-lasso convergence diagnostics are recorded for every rolling
+    window. ConvergenceWarning messages are captured inside the estimator so
+    workflows do not spam the terminal. on_non_convergence controls whether
+    non-converged windows are only recorded, summarized with one warning, or
+    treated as an error.
     """
 
     if window <= 1:
@@ -69,6 +93,14 @@ def compute_rolling_graph_features(
         raise ValueError("partial_corr_threshold must be non-negative.")
     if max_iter <= 0:
         raise ValueError("max_iter must be positive.")
+    if tol <= 0:
+        raise ValueError("tol must be positive.")
+    if enet_tol <= 0:
+        raise ValueError("enet_tol must be positive.")
+    if mode not in {"cd", "lars"}:
+        raise ValueError("mode must be either 'cd' or 'lars'.")
+    if on_non_convergence not in {"record", "warn", "raise"}:
+        raise ValueError("on_non_convergence must be 'record', 'warn', or 'raise'.")
 
     cleaned_returns = clean_returns(returns, min_non_missing=min_non_missing)
 
@@ -78,9 +110,10 @@ def compute_rolling_graph_features(
     if cleaned_returns.shape[0] < min_periods:
         raise ValueError("returns must contain enough complete observations.")
 
-    rows: list[dict[str, float]] = []
+    rows: list[dict[str, object]] = []
     index: list[object] = []
     previous_laplacian: np.ndarray | None = None
+    non_converged_dates: list[object] = []
 
     for end_position in range(min_periods, len(cleaned_returns) + 1):
         start_position = max(0, end_position - window)
@@ -92,11 +125,15 @@ def compute_rolling_graph_features(
         if standardized_window.shape[0] < min_periods:
             continue
 
-        _, precision = fit_graphical_lasso(
+        fit = fit_graphical_lasso_with_diagnostics(
             standardized_window,
             alpha=alpha,
             max_iter=max_iter,
+            tol=tol,
+            enet_tol=enet_tol,
+            mode=mode,
         )
+        precision = fit.precision
         partial_corr = precision_to_partial_correlation(precision)
         adjacency = partial_correlation_to_adjacency(
             partial_corr,
@@ -109,10 +146,46 @@ def compute_rolling_graph_features(
             previous_laplacian=previous_laplacian,
             compute_modularity=compute_modularity,
         )
+        feature_row.update(
+            {
+                "graph_lasso_converged": fit.converged,
+                "graph_lasso_n_iter": fit.n_iter,
+                "graph_lasso_alpha": fit.alpha,
+                "graph_lasso_max_iter": fit.max_iter,
+                "graph_lasso_tol": fit.tol,
+                "graph_lasso_enet_tol": fit.enet_tol,
+                "graph_lasso_mode": fit.mode,
+                "graph_lasso_warning_count": len(fit.warning_messages),
+                "graph_lasso_warning_message": (
+                    fit.warning_messages[0] if fit.warning_messages else ""
+                ),
+            }
+        )
 
         rows.append(feature_row)
-        index.append(cleaned_returns.index[end_position - 1])
+        window_end_date = cleaned_returns.index[end_position - 1]
+        index.append(window_end_date)
+        if not fit.converged:
+            non_converged_dates.append(window_end_date)
         previous_laplacian = laplacian
+
+    if non_converged_dates:
+        non_convergence_count = len(non_converged_dates)
+        total_windows = len(rows)
+        if on_non_convergence == "raise":
+            raise RuntimeError(
+                "GraphicalLasso did not converge in "
+                f"{non_convergence_count}/{total_windows} rolling windows. "
+                f"First failed window end-date: {non_converged_dates[0]!r}."
+            )
+        if on_non_convergence == "warn":
+            warnings.warn(
+                "GraphicalLasso did not converge in "
+                f"{non_convergence_count}/{total_windows} rolling windows. "
+                "See graph_lasso_converged and graph_lasso_warning_count.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
     return pd.DataFrame(rows, index=pd.Index(index, name=returns.index.name))
 
@@ -143,6 +216,26 @@ def compute_regime_indicator(features: pd.DataFrame) -> pd.DataFrame:
 
     output["regime_indicator"] = regime_indicator.replace([np.inf, -np.inf], np.nan).fillna(0.0)
     return output
+
+
+def summarize_graph_lasso_convergence(features: pd.DataFrame) -> dict[str, float | int]:
+    """Summarize rolling graphical-lasso convergence diagnostics."""
+
+    if "graph_lasso_converged" not in features.columns:
+        raise KeyError("features is missing graph_lasso_converged.")
+
+    converged = features["graph_lasso_converged"].astype(bool)
+    n_windows = int(len(converged))
+    n_converged = int(converged.sum())
+    n_non_converged = int(n_windows - n_converged)
+    convergence_rate = float(n_converged / n_windows) if n_windows else np.nan
+
+    return {
+        "n_windows": n_windows,
+        "n_converged": n_converged,
+        "n_non_converged": n_non_converged,
+        "convergence_rate": convergence_rate,
+    }
 
 
 def _safe_z_score(series: pd.Series) -> pd.Series:

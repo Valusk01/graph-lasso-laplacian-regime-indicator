@@ -272,6 +272,45 @@ Visual diagnostics are intentionally not robustness checks. Phase 5 should still
 test sensitivity to asset universes, window lengths, fixed alpha values,
 thresholds, data cleaning choices, and alternative benchmark definitions.
 
+## Graphical-Lasso Convergence Diagnostics
+
+Rolling graphical-lasso estimation can fail to converge in some windows. A
+non-converged window does not necessarily crash the workflow, but it weakens
+confidence in that window's precision matrix and therefore in the partial
+correlation graph and Laplacian features derived from it.
+
+The project records convergence diagnostics for every rolling window. The
+rolling feature table includes:
+
+- `graph_lasso_converged`: whether scikit-learn completed without a
+  `ConvergenceWarning`.
+- `graph_lasso_n_iter`: the solver iteration count reported by scikit-learn.
+- `graph_lasso_alpha`, `graph_lasso_max_iter`, `graph_lasso_tol`,
+  `graph_lasso_enet_tol`, and `graph_lasso_mode`: the solver settings used in
+  that window.
+- `graph_lasso_warning_count`: the number of captured convergence warnings.
+- `graph_lasso_warning_message`: the first captured warning message, if any.
+
+Workflows capture `ConvergenceWarning` messages so repeated rolling fits do not
+spam the terminal. Users can choose how to handle non-convergence through
+`on_non_convergence`:
+
+- `record`: suppress warning spam and record diagnostic columns.
+- `warn`: record diagnostics and emit one summarized warning after the rolling
+  loop.
+- `raise`: stop with an error if any rolling window fails to converge.
+
+Users should inspect `graph_lasso_converged` and
+`graph_lasso_warning_count` before interpreting empirical results. If many
+windows fail to converge, consider increasing `max_iter`, increasing `alpha`
+moderately, checking for highly collinear assets, reducing the asset universe,
+or increasing the rolling window length. Later robustness work may also test
+volatility-normalized or residualized returns.
+
+Convergence diagnostics are part of model-risk control. They should be reported
+alongside empirical results because unstable precision-matrix estimates can
+change the inferred network topology.
+
 Interpretation of Graphical Lasso
 
 Graphical lasso estimates a sparse inverse covariance matrix, also called a
