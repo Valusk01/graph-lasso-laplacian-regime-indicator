@@ -25,9 +25,11 @@ regime indicator.
   and regime-class summaries.
 - Phase 4: reusable matplotlib visual diagnostics and a reproducible workflow
   that writes diagnostic tables and figures.
+- Phase 5: robustness, topology-transition diagnostics, and research-only
+  risk-overlay evaluation against simple benchmark overlays.
 
-Not implemented yet: dashboards, notebooks, robustness checks, or final
-empirical conclusions.
+Not implemented yet: dashboards, notebooks, live trading, broker integration,
+or final empirical conclusions.
 
 ## Installation
 
@@ -124,3 +126,32 @@ Output figures:
 
 Generated figures and tables under `outputs/` are ignored by git and should not
 be committed.
+
+## Run The Phase 5 Risk Overlay Analysis
+
+```bash
+.venv/bin/python examples/run_phase5_risk_overlay_analysis.py
+```
+
+This workflow reads the saved Phase 4 tables from `outputs/tables/`. If they
+are missing, run the visual diagnostics workflow first. Phase 5 is research
+only: it tests whether the regime indicator can act as a risk-overlay feature,
+not whether it is a live trading system.
+
+Output tables:
+
+- `outputs/phase5_tables/overlay_performance_comparison.csv`
+- `outputs/phase5_tables/overlay_exposure_summary.csv`
+- `outputs/phase5_tables/benchmark_overlay_comparison.csv`
+- `outputs/phase5_tables/transition_diagnostics.csv`
+- `outputs/phase5_tables/non_converged_exclusion_diagnostics.csv`
+
+Output figures:
+
+- `outputs/phase5_figures/cumulative_returns_baseline_vs_ri_overlay.png`
+- `outputs/phase5_figures/exposure_over_time.png`
+- `outputs/phase5_figures/drawdown_baseline_vs_ri_overlay.png`
+
+Generated Phase 5 outputs are also ignored by git. Interpret them as
+exploratory diagnostics until robustness checks and out-of-sample tests are
+complete.

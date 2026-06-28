@@ -311,6 +311,45 @@ Convergence diagnostics are part of model-risk control. They should be reported
 alongside empirical results because unstable precision-matrix estimates can
 change the inferred network topology.
 
+## Phase 5 Robustness and Risk-Overlay Layer
+
+Phase 5 adds robustness and research-only risk-overlay diagnostics. It is not a
+trading system, does not connect to a broker, and should not be interpreted as
+evidence that the indicator is profitable or validated.
+
+The motivation for a risk overlay is modest. The current empirical evidence
+suggests that the regime indicator may be more useful as a topology-transition
+or instability feature than as a direct persistent stress-level signal. A risk
+overlay asks whether exposure scaling during high-RI regimes changes realized
+portfolio risk, drawdowns, and risk-adjusted performance. It does not attempt
+to forecast return direction.
+
+All overlay tests should be compared against simple baselines. Relevant
+benchmarks include VIX, realized volatility, drawdown, average correlation,
+average absolute correlation, and simple correlation-spectrum measures such as
+the first PCA eigenvalue of the correlation matrix. If the graph-based
+indicator cannot add information beyond simpler variables, its practical value
+is limited even if the graph construction is methodologically interesting.
+
+Exposure thresholds can be computed in two ways. Full-sample thresholds are
+useful for diagnostics because they show how an overlay behaves when the entire
+sample distribution is known. Expanding thresholds are preferred for realistic
+evaluation because each date uses only prior information. Phase 5 defaults to
+expanding thresholds and shifts exposure by one observation before applying it
+to returns to reduce look-ahead bias.
+
+Phase 5 also introduces transition diagnostics. These compare RI against
+changes in benchmark variables and against stress-onset labels, rather than
+only persistent stress labels. This is important because a topology-transition
+feature may spike near the onset or reconfiguration of stress and then fall
+while conventional stress variables remain elevated.
+
+Generated Phase 5 results remain exploratory until out-of-sample tests are
+completed. Robustness checks should include alpha grids, rolling-window grids,
+partial-correlation thresholds, non-converged-window exclusions, alternative
+asset universes, combinatorial versus normalized Laplacian features, and signed
+versus absolute partial-correlation networks.
+
 Interpretation of Graphical Lasso
 
 Graphical lasso estimates a sparse inverse covariance matrix, also called a
@@ -340,11 +379,12 @@ Current Validation Status
 
 The project currently provides the machinery needed to estimate the graph-based
 regime indicator, construct benchmark stress variables, produce empirical
-diagnostic tables, and generate visual diagnostic figures.
+diagnostic tables, generate visual diagnostic figures, and run Phase 5
+robustness and research-only risk-overlay diagnostics.
 
 It is not yet a validated recession, crisis, drawdown, or VIX signal.
-Robustness checks, dashboards, notebooks, and final empirical conclusions are
-intentionally left for later phases.
+Dashboards, notebooks, live trading, broker integration, and final empirical
+conclusions are intentionally left out of scope.
 
 The Phase 3 diagnostics can be used to evaluate whether the graph-lasso
 Laplacian regime indicator:
@@ -355,8 +395,8 @@ distinguishes stress from non-stress periods;
 contains predictive information for future volatility, drawdowns, or
 correlation spikes.
 
-Phase 5 should focus on robustness and careful interpretation of these empirical
-results.
+Phase 5 outputs should be interpreted as robustness and risk-overlay research,
+not as final validation.
 
 
 ---
