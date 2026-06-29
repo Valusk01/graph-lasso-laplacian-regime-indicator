@@ -7,6 +7,16 @@ from graph_regime.benchmarks import (
     create_stress_labels,
     load_fred_recession_indicator,
 )
+from graph_regime.component_overlays import (
+    build_component_overlay_signals,
+    compute_component_overlay_exposures,
+    evaluate_component_overlays,
+)
+from graph_regime.component_scores import (
+    GRAPH_COMPONENT_COLUMNS,
+    add_component_scores,
+    residualize_graph_components,
+)
 from graph_regime.data import (
     download_vix,
     download_yfinance_prices,
@@ -55,6 +65,14 @@ from graph_regime.phase6 import (
     run_incremental_information_tests,
     run_phase6_robustness_grid,
     select_oos_configuration,
+)
+from graph_regime.phase7 import (
+    run_graph_component_ablation,
+    run_model_ladder_incremental_tests,
+)
+from graph_regime.pca_baselines import (
+    PCA_FEATURE_COLUMNS,
+    compute_rolling_pca_features,
 )
 from graph_regime.preprocessing import clean_returns, standardize_window
 from graph_regime.risk_overlay import (
@@ -131,7 +149,17 @@ __all__ = [
     "assign_sample_period",
     "build_oos_outputs",
     "build_phase6_tables_from_indicator",
+    "build_component_overlay_signals",
+    "compute_component_overlay_exposures",
+    "compute_rolling_pca_features",
+    "evaluate_component_overlays",
+    "GRAPH_COMPONENT_COLUMNS",
     "DEFAULT_SAMPLE_SPLITS",
     "Phase6Config",
+    "PCA_FEATURE_COLUMNS",
     "SampleSplits",
+    "add_component_scores",
+    "residualize_graph_components",
+    "run_graph_component_ablation",
+    "run_model_ladder_incremental_tests",
 ]

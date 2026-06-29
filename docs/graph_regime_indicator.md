@@ -13,6 +13,8 @@ The project now implements:
 - Phase 5: robustness and research-only risk-overlay diagnostics.
 - Phase 6: controlled robustness, out-of-sample, incremental-information,
   transaction-cost, and turnover diagnostics.
+- Phase 7: PCA/correlation-spectrum baselines and component-level graph
+  diagnostics.
 
 ## Research Hypothesis
 
@@ -337,12 +339,62 @@ reduction. Its purpose is to test whether the Phase 5 result survives
 reasonable parameter changes, no-lookahead sample discipline, simple benchmark
 comparisons, and cost/turnover assumptions.
 
+## Phase 7 PCA Baselines and Component-Level Graph Diagnostics
+
+Phase 7 tests whether the composite RI is hiding useful information contained
+in individual graph-Laplacian features. This matters because a weighted sum can
+be convenient for monitoring but may dilute the predictive or classification
+power of specific components such as algebraic connectivity, Frobenius topology
+change, or graph strength.
+
+PCA/correlation-spectrum features are the natural simple spectral baseline.
+They are computed from rolling correlation matrices, not covariance matrices,
+so they are scale-normalized. The first eigenvalue and its share measure
+dominance of the broad market mode; effective rank measures diversification
+across correlation eigenmodes; changes in those quantities measure transitions
+in the correlation spectrum. If PCA features outperform graph components, the
+extra complexity of graphical lasso and Laplacian features may not be justified
+without further evidence.
+
+Phase 7 component scores include individual graph variables and conceptual
+blocks:
+
+- connectivity score: graph strength, algebraic connectivity, and weighted
+  edge density;
+- transition score: Laplacian Frobenius change;
+- spectral score: largest Laplacian eigenvalue share;
+- equal-weight graph-component score.
+
+The component block scores use full-sample z-scores in the current workflow,
+so they should be read as research diagnostics. Strict real-time deployment
+tests should replace that scaling with expanding or training-sample-only
+normalization.
+
+The model ladder compares benchmarks only, benchmarks plus RI, benchmarks plus
+PCA features, benchmarks plus graph components, benchmarks plus PCA and graph
+components, and benchmark-orthogonalized graph components. Orthogonalization
+uses expanding residualization by default so current residuals are estimated
+from prior observations. Full-sample residualization is diagnostics-only.
+
+Component ablation tests whether results depend on a single graph feature. A
+robust graph signal should not disappear completely when one component is
+removed, and a strong single block should have an interpretable reason for
+working. Component overlays use the same expanding-quantile, one-period-shifted
+exposure logic as earlier phases and remain research-only.
+
+If graph components outperform RI, the correct interpretation is that the
+composite indicator should be redesigned or decomposed before being treated as
+the final research object. If PCA baselines outperform graph components, the
+project should treat correlation-spectrum structure as a stronger benchmark and
+ask whether graph-lasso Laplacian features add incremental information after
+controlling for PCA modes.
+
 ## Current Validation Status
 
 The project currently provides the machinery needed to estimate the graph-based
 regime indicator, construct benchmark stress variables, produce empirical
-diagnostic tables, generate visual diagnostic figures, and run Phase 5 and
-Phase 6 research-only risk-overlay diagnostics.
+diagnostic tables, generate visual diagnostic figures, and run Phase 5 through
+Phase 7 research-only risk-overlay and component diagnostics.
 
 It is not yet a validated recession, crisis, drawdown, VIX, or trading signal.
 Dashboards, notebooks, live trading, broker integration, and final empirical
@@ -351,5 +403,5 @@ conclusions are intentionally out of scope.
 The updated empirical outputs show mixed stress-level evidence, suggestive
 topology-transition behavior, weak predictive diagnostics, and encouraging but
 preliminary risk-overlay results. The next research step is to interpret Phase
-6 robustness, out-of-sample, incremental-information, and transaction-cost
-outputs, not deployment.
+6 and Phase 7 robustness, out-of-sample, incremental-information,
+transaction-cost, PCA-baseline, and component-ablation outputs, not deployment.

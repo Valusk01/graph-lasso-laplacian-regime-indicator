@@ -667,3 +667,141 @@ in-sample, but OOS AUC remains close to `0.798`. The correct interpretation is
 that RI and graph features may contain incremental information, but the current
 evidence is not uniformly strong and requires full-grid and out-of-sample
 confirmation.
+
+## Phase 7 PCA Baselines and Component-Level Results
+
+Phase 7 extends the research question from "does the composite RI work?" to
+"which graph-Laplacian components, if any, contain useful incremental
+information?" This is an important shift. A composite indicator can be useful
+for monitoring, but it can also blend together features with different
+economic meanings and different predictive value.
+
+The Phase 7 workflow adds rolling PCA/correlation-spectrum baselines, graph
+component block scores, benchmark-orthogonalized graph components, a model
+ladder, component overlays, and graph-component ablations. These outputs are
+saved under `outputs/phase7_tables/` and `outputs/phase7_figures/`.
+
+### Model Ladder Findings
+
+The model ladder compares:
+
+- `M0`: benchmarks only;
+- `M1`: benchmarks plus composite RI;
+- `M2`: benchmarks plus PCA/correlation-spectrum features;
+- `M3`: benchmarks plus graph components;
+- `M4`: benchmarks plus PCA features and graph components;
+- `M5`: benchmarks plus orthogonalized graph components.
+
+The strongest Phase 7 evidence is that graph components and PCA features are
+more informative than the composite RI alone in several diagnostics.
+
+For forward realized volatility:
+
+| Target | M0 OOS R2 | M1 RI OOS R2 | M2 PCA OOS R2 | M3 graph OOS R2 | M4 PCA+graph OOS R2 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 5d realized volatility | 0.1759 | 0.1810 | 0.1745 | 0.2140 | 0.2483 |
+| 21d realized volatility | 0.0384 | 0.0303 | 0.0617 | -0.0089 | 0.1310 |
+
+For realized-volatility targets, the combined PCA-plus-graph model performs
+best in this run. The composite RI alone adds only modest incremental
+information, while graph components and PCA features together appear more
+powerful.
+
+For forward max drawdown:
+
+| Target | M0 OOS R2 | M1 RI OOS R2 | M2 PCA OOS R2 | M3 graph OOS R2 | M4 PCA+graph OOS R2 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 5d max drawdown | 0.0205 | 0.0248 | -0.0273 | -0.0106 | -0.0355 |
+| 21d max drawdown | -0.0294 | -0.0133 | -0.0783 | -0.1414 | 0.0038 |
+
+The drawdown results are weaker and less stable. RI helps slightly relative to
+the benchmark-only model for short-horizon drawdown, but PCA and graph
+components do not produce uniformly better OOS drawdown prediction.
+
+For stress-onset classification:
+
+| Model | In-sample AUC | OOS AUC | Brier score | OOS Brier |
+| --- | ---: | ---: | ---: | ---: |
+| M0 benchmarks | 0.7922 | 0.7962 | 0.00564 | 0.00670 |
+| M1 benchmarks + RI | 0.7918 | 0.7982 | 0.00564 | 0.00670 |
+| M2 benchmarks + PCA | 0.8814 | 0.8712 | 0.00526 | 0.00571 |
+| M3 benchmarks + graph components | 0.8354 | 0.7983 | 0.00562 | 0.00669 |
+| M4 benchmarks + PCA + graph components | 0.9034 | 0.8890 | 0.00524 | 0.00573 |
+| M5 benchmarks + orthogonal graph | 0.8566 | 0.8347 | 0.00517 | 0.00670 |
+
+This is the clearest Phase 7 result: PCA features materially improve
+stress-onset classification, and PCA plus graph components gives the best OOS
+AUC in this run. Composite RI alone does not materially improve stress-onset
+AUC beyond benchmarks.
+
+### Component Overlay Findings
+
+Component-based overlays also improve on the original RI overlay in this run.
+The baseline row below is evaluated on the same dates as the component overlay
+signals, so it is directly comparable with the overlay rows.
+
+| Overlay signal | Sharpe | Calmar | Max drawdown | Turnover proxy |
+| --- | ---: | ---: | ---: | ---: |
+| Baseline | 0.5970 | 0.2471 | -0.3308 | n/a |
+| Composite RI | 0.6976 | 0.3958 | -0.2034 | 13.70 |
+| Graph components equal weight | 0.7375 | 0.4030 | -0.2121 | 9.22 |
+| Transition score | 0.7223 | 0.4160 | -0.1999 | 25.38 |
+| Laplacian Frobenius change | 0.7202 | 0.4148 | -0.1999 | 25.33 |
+| Connectivity score | 0.7122 | 0.3862 | -0.2205 | 4.47 |
+| PCA first eigenvalue change | 0.7177 | 0.3344 | -0.2590 | 29.18 |
+| PCA first eigenvalue share | 0.6693 | 0.3580 | -0.2085 | 1.52 |
+
+The best overlay by Sharpe is the equal-weight graph-component score. The best
+Calmar among these signals is the transition score, which is essentially
+driven by Laplacian Frobenius topology change. The PCA first-eigenvalue change
+is competitive on Sharpe but has high turnover and weaker drawdown/Calmar.
+
+Transaction costs change the interpretation. For the equal-weight graph
+component score, Sharpe declines from `0.7375` at 0 bps to `0.6944` at 5 bps
+and `0.6514` at 10 bps. For the transition score, Sharpe declines from
+`0.7223` to `0.6038` and then `0.4866`. The transition signal is useful but
+turnover-intensive, so its economic interpretation is much more cost-sensitive.
+
+### Ablation Findings
+
+The graph-component ablation table suggests that no single interpretation is
+fully dominant.
+
+| Ablation | OOS R2 | OOS AUC | Overlay Sharpe | Overlay Calmar |
+| --- | ---: | ---: | ---: | ---: |
+| All graph components | -0.0089 | 0.7983 | 0.7375 | 0.4030 |
+| Excluding Frobenius change | -0.0182 | 0.8053 | 0.7063 | 0.3371 |
+| Excluding algebraic connectivity | 0.0135 | 0.8080 | 0.7919 | 0.4358 |
+| Excluding average graph strength | -0.0089 | 0.7983 | 0.7454 | 0.4165 |
+| Excluding largest eigenvalue share | -0.0156 | 0.8072 | 0.7363 | 0.4027 |
+| Connectivity only | 0.0398 | 0.8116 | 0.7122 | 0.3862 |
+| Transition only | 0.0481 | 0.8003 | 0.7223 | 0.4160 |
+| Spectral only | -0.0144 | 0.8133 | 0.5483 | 0.2147 |
+
+The best ablation by overlay Sharpe is "excluding algebraic connectivity,"
+which is a useful warning against assuming every component in the composite RI
+is helpful for overlay design. Connectivity-only and transition-only have the
+best OOS R2 among the ablation rows, while spectral-only has the best OOS AUC
+but poor overlay performance. This supports a component-specific research
+interpretation rather than a single universal graph score.
+
+### Phase 7 Research Interpretation
+
+Phase 7 strengthens the topology-transition/risk-overlay hypothesis, but in a
+more nuanced way than the original RI hypothesis. The composite RI is not the
+end of the research object. Individual graph components, graph-component
+blocks, and PCA spectral baselines contain information that RI alone can
+dilute.
+
+The most encouraging result is that PCA plus graph components improves
+stress-onset OOS AUC and forward-realized-volatility OOS R2. The most useful
+overlay result is that graph-component scores can outperform the composite RI
+on Sharpe and Calmar, although the best signals differ depending on whether
+turnover and transaction costs are emphasized.
+
+The most important caution is that PCA baselines are strong. If PCA features
+continue to explain stress onsets better than graph components in broader
+tests, then the project must show that graph-lasso Laplacian features add
+incremental value beyond simpler correlation-spectrum information. The Phase 7
+result is therefore encouraging for component research, but it also raises the
+standard of evidence for the graph-lasso layer.
