@@ -1,12 +1,18 @@
 # Graph-Lasso Laplacian Regime Indicator
 
-This module tests whether rolling conditional-dependence topology in asset
-returns can act as a financial regime indicator. It currently implements the
-Phase 1 core engine and the Phase 2 benchmark data layer.
+This project tests whether rolling conditional-dependence topology in asset
+returns can act as a financial regime indicator. It is a quantitative research
+project, not a production trading system.
 
-Phase 1 covers rolling graph estimation, Laplacian feature extraction, and a
-standardized composite regime indicator. Phase 2 adds data-loading utilities and
-benchmark stress variables for later empirical validation.
+The project now implements:
+
+- Phase 1: graph-lasso/Laplacian feature engine.
+- Phase 2: benchmark and data layer.
+- Phase 3: empirical evaluation diagnostics.
+- Phase 4: visual diagnostics workflow.
+- Phase 5: robustness and research-only risk-overlay diagnostics.
+- Phase 6: controlled robustness, out-of-sample, incremental-information,
+  transaction-cost, and turnover diagnostics.
 
 ## Research Hypothesis
 
@@ -29,248 +35,177 @@ the rest of the asset universe. Graphical lasso instead estimates a sparse
 precision matrix, also called the inverse covariance matrix.
 
 Under Gaussian assumptions, zero off-diagonal entries in the precision matrix
-correspond to conditional independence relationships between variables. In that
-setting, nonzero off-diagonal precision entries indicate conditional dependence
-between two assets after accounting for all other assets in the window.
-
-In financial return applications, this interpretation should be used carefully.
-Asset returns are not generally Gaussian, and their dependence structure may be
-time-varying, heavy-tailed, nonlinear, and affected by volatility clustering.
-Therefore, outside the Gaussian case, the safer interpretation is that
-graphical lasso provides a sparse estimate of linear conditional-dependence
+correspond to conditional independence relationships between variables. In
+financial return applications, this interpretation should be used carefully
+because returns are heavy-tailed, nonlinear, heteroskedastic, and affected by
+volatility clustering. Outside the Gaussian case, the safer interpretation is
+that graphical lasso provides a sparse estimate of linear conditional-dependence
 structure through partial correlations.
 
-This distinction matters for regime research because a crisis may change the
-conditional dependence network, not only the unconditional correlation matrix.
+Graphical lasso does not directly generate a graph Laplacian. The pipeline is:
+
+```text
+returns -> standardized rolling window -> sparse precision matrix
+        -> partial correlation matrix -> weighted adjacency matrix
+        -> graph Laplacian -> spectral and topological features
+```
 
 ## Why Convert Precision to Partial Correlations
 
-Graphical lasso does not directly generate a graph Laplacian. Its output is a
-sparse precision matrix. To build a weighted graph with interpretable edge
-weights, the precision matrix is converted into partial correlations:
+Graphical lasso outputs a sparse precision matrix. To build a weighted graph
+with interpretable edge weights, the precision matrix is converted into partial
+correlations:
 
 ```text
 partial_corr_ij = -Theta_ij / sqrt(Theta_ii * Theta_jj)
-The module then uses the absolute value of each off-diagonal partial correlation
-as the weighted adjacency matrix. This Phase 1 signal focuses on dependence
-magnitude and systemic connectedness rather than the sign of the relationship.
+```
 
-The resulting graph should therefore be interpreted as a sparse
-partial-correlation network. It is not a distribution-free causal graph and
-should not be described as a direct estimator of causal relationships.
+The module then uses the absolute value of each off-diagonal partial
+correlation as the weighted adjacency matrix. This Phase 1 signal focuses on
+dependence magnitude and systemic connectedness rather than the sign of the
+relationship.
 
-Why Build a Laplacian
+The resulting graph should be interpreted as a sparse partial-correlation
+network. It is not a distribution-free causal graph and should not be described
+as a direct estimator of causal relationships.
+
+## Why Build a Laplacian
 
 The weighted graph Laplacian is defined as:
+
+```text
 D_ii = sum_j A_ij
 L = D - A
+```
 
 The Laplacian links local edge weights to global graph structure. Its spectrum
 summarizes connectivity, fragmentation, and dominance of large-scale network
-modes.
+modes. In this project, the Laplacian transforms a rolling partial-correlation
+network into numerical features that can be tracked through time and compared
+with known financial stress indicators.
 
-In this project, the Laplacian is used to transform a rolling
-partial-correlation network into numerical features that can be tracked through
-time and compared with known financial stress indicators.
+## Why These Features
 
-Why These Features
-average_graph_strength: typical total conditional-dependence weight attached
-to each asset. Higher values suggest stronger market-wide connectedness.
-weighted_edge_density: total partial-correlation weight relative to the
-number of possible edges. Higher values suggest a denser dependence network.
-algebraic_connectivity: the second-smallest Laplacian eigenvalue. Higher
-values imply the graph is harder to split into weakly connected blocks.
-largest_laplacian_eigenvalue: a scale measure for the strongest Laplacian
-spectral mode.
-largest_laplacian_eigenvalue_share: the largest eigenvalue divided by total
-Laplacian spectral mass. Higher values suggest more concentrated systemic
-structure.
-modularity: optional estimated community separation when NetworkX community
-tools are available. Lower modularity is consistent with less segmented, less
-diversified market structure. It is disabled by default for speed and stability
-because community detection can dominate unit-test and rolling-pipeline runtime.
-laplacian_frobenius_change: window-to-window topology turnover. The first
-window is reported as NaN because no previous Laplacian exists.
+The Phase 1 engine extracts graph and spectral features designed to summarize
+systemic connectedness:
+
+- `average_graph_strength`: typical total conditional-dependence weight
+  attached to each asset.
+- `weighted_edge_density`: total partial-correlation weight relative to the
+  number of possible edges.
+- `algebraic_connectivity`: the second-smallest Laplacian eigenvalue; higher
+  values imply the graph is harder to split into weakly connected blocks.
+- `largest_laplacian_eigenvalue`: scale measure for the strongest Laplacian
+  spectral mode.
+- `largest_laplacian_eigenvalue_share`: largest eigenvalue divided by total
+  Laplacian spectral mass.
+- `modularity`: optional estimated community separation. Lower modularity is
+  consistent with less segmented market structure, but it is disabled by
+  default for speed and stability.
+- `laplacian_frobenius_change`: window-to-window topology turnover.
 
 The composite regime indicator is:
+
+```text
 RI_t =
   z(average_graph_strength_t)
   + z(algebraic_connectivity_t)
   + z(largest_laplacian_eigenvalue_share_t)
   - z(modularity_t)
   + z(laplacian_frobenius_change_t)
+```
 
-Z-scores are computed across the available time series of each feature, not
-inside each rolling window. Constant or unavailable components receive a neutral
-zero z-score.
-
-When modularity is disabled or unavailable, it is reported as NaN and
-z_modularity is neutralized to zero. In that default fast configuration, the
-base regime indicator is driven by average graph strength, algebraic
-connectivity, largest Laplacian eigenvalue share, and Laplacian Frobenius
-change. Researchers who want the full modularity component can explicitly set
-compute_modularity=True.
+Z-scores are computed across the available feature time series, not inside each
+rolling window. Constant or unavailable components receive a neutral zero
+z-score. When modularity is disabled or unavailable, it is reported as `NaN`
+and `z_modularity` is neutralized to zero.
 
 High values of the regime indicator are intended to represent a more systemic,
-more connected, less diversified market state.
+more connected, less diversified market state. The empirical outputs show that
+this interpretation remains a hypothesis, not a validated fact.
 
-Why Fixed Alpha Matters
+## Why Fixed Alpha Matters
 
 The graphical-lasso penalty alpha is fixed across windows by default. Re-tuning
-the penalty inside every rolling window could create artificial topology changes
-that reflect the model-selection procedure rather than genuine market structure.
+the penalty inside every rolling window could create artificial topology
+changes that reflect the model-selection procedure rather than genuine market
+structure.
 
-For this reason, changes in the estimated graph should come primarily from
-changes in the return data, not from changes in the regularization rule.
+Changes in the estimated graph should come primarily from changes in the return
+data, not from changes in the regularization rule. Robustness checks should
+still evaluate whether conclusions are sensitive to alternative fixed values of
+alpha.
 
-Later robustness checks should still evaluate whether the main conclusions are
-sensitive to alternative fixed values of alpha.
-
-Volatility Contamination Risk
+## Volatility Contamination Risk
 
 Returns are standardized within each window to reduce direct volatility
 contamination. This does not fully eliminate the risk that volatility regimes,
 heavy tails, or outliers influence the estimated dependence graph.
 
-This issue is important in financial applications because crises often involve
-both higher volatility and stronger co-movement. A graph-based indicator may rise
-because the conditional-dependence topology is genuinely changing, but it may
-also partly reflect volatility clustering or extreme observations.
+Crises often involve both higher volatility and stronger co-movement. A
+graph-based indicator may rise because conditional-dependence topology is
+genuinely changing, but it may also partly reflect volatility clustering or
+extreme observations. Later interpretation should therefore compare the graph
+indicator against simpler volatility and correlation benchmarks.
 
-Later phases should test whether the indicator adds information beyond simpler
-volatility and correlation benchmarks.
-
-Phase 2 Benchmark Layer
+## Phase 2 Benchmark Layer
 
 Phase 2 adds data-loading utilities and benchmark stress variables so the graph
-regime indicator can later be compared against familiar market stress measures.
-The purpose is not to prove the indicator is correct, but to create a clean
-comparison layer for future validation.
+regime indicator can be compared against familiar market stress measures.
 
-Benchmark comparison matters because the graph-lasso Laplacian indicator is a
-new derived topology signal. If it rises during known stress episodes, broad
-market drawdowns, volatility shocks, high-correlation regimes, or recessionary
-periods, that behavior would be consistent with the systemic connectedness
-hypothesis. If it does not, the feature design, estimation choices, or
-hypothesis may need revision.
+The benchmark layer supports:
 
-The Phase 2 benchmarks are:
-
-VIX: an option-implied volatility index for the S&P 500. It captures expected
-near-term equity volatility and is often elevated during market stress.
-Market drawdown: loss from a running high-water mark. It captures realized
-market damage and crisis depth rather than expected volatility.
-Realized volatility: rolling standard deviation of returns, optionally
-annualized. It captures recent turbulence in observed returns.
-Average rolling correlation: the average off-diagonal correlation across
-assets. It captures the familiar tendency for diversification to weaken when
-many assets move together.
-Average absolute rolling correlation: the average absolute off-diagonal
-correlation across assets. This can be useful when the universe contains
-assets such as equities, bonds, commodities, and defensive assets, because
-stress may strengthen dependence even when some relationships are negative.
-Recession indicators: optional FRED series such as USREC mark official or
-model-based macro recession periods, depending on the selected series.
+- VIX, an option-implied volatility index for the S&P 500.
+- Market drawdown, defined as loss from the running high-water mark.
+- Realized volatility, computed from rolling returns.
+- Average rolling correlation.
+- Average absolute rolling correlation.
+- Optional recession indicators from FRED.
 
 These benchmarks are imperfect but useful. VIX is equity-option-specific,
-drawdown is path-dependent, realized volatility can miss slow-moving stress,
-average raw correlation is unconditional rather than conditional, average
-absolute correlation ignores sign, and recession indicators are low-frequency
-and often backward-looking. They are still helpful anchors because each captures
-a different observable aspect of stress.
+drawdown is path-dependent, realized volatility is backward-looking, average
+correlation is unconditional, and recession indicators are low-frequency. They
+are still useful anchors because each captures a different observable aspect of
+stress.
 
 Benchmark agreement is not causal proof. A graph regime indicator can co-move
-with VIX, drawdowns, volatility, correlation, or recession labels without
-proving that network topology causes stress or predicts future crises. Causal
-interpretation, out-of-sample evaluation, robustness checks, and predictive
-testing remain later phase work.
+with VIX, drawdowns, volatility, or correlation without proving that network
+topology causes stress or predicts future crises.
 
-Phase 3 Empirical Evaluation Layer
+## Phase 3 Empirical Evaluation Layer
 
 Phase 3 adds table-based diagnostics for comparing the graph regime indicator
-with benchmark stress variables and future market outcomes. These diagnostics
-support empirical inspection, but they do not claim final validation.
+with benchmark stress variables and future market outcomes.
 
-Contemporaneous diagnostics align the regime indicator with benchmark variables
-on common dates. For binary stress labels, the evaluation layer compares stress
-and non-stress periods by reporting observation counts, stress and non-stress
-means and medians, differences in means, stress-to-non-stress ratios, and Welch
-t-statistics when both groups have enough observations. This tests whether the
-indicator tends to be higher during benchmark stress states.
+Contemporaneous diagnostics compare RI in stress versus non-stress periods and
+compute correlations with continuous benchmarks such as VIX, realized
+volatility, drawdown, and rolling correlation.
 
-For continuous benchmark variables, the diagnostics report Pearson and Spearman
-correlations. Pearson correlation measures linear co-movement with variables
-such as VIX, realized volatility, drawdown, or average correlation. Spearman
-rank correlation checks whether the indicator is monotonic with those benchmarks
-even when the relationship is not linear.
+Predictive diagnostics construct forward targets using returns from `t+1`
+through `t+h` only. Targets include forward realized volatility, forward return
+sums, forward absolute return sums, and forward maximum drawdown. These are
+screening statistics, not causal or trading evidence.
 
-Predictive diagnostics are harder than contemporaneous validation because they
-must avoid look-ahead. Phase 3 constructs forward targets using returns from
-t+1 through t+h only. The targets include forward realized volatility, forward
-return sums, forward absolute return sums, and forward maximum drawdown over
-several horizons. The evaluation then reports correlations and simple
-univariate OLS diagnostics of each forward target on the current regime
-indicator.
+The evaluation layer also includes event-study extraction and quantile-based
+regime class summaries.
 
-The event-study helper extracts the indicator path around supplied event dates.
-Each event is matched to the closest available indicator date less than or equal
-to the event date, then an observation-window path is returned using relative
-day offsets. This supports later crisis-window inspection without requiring a
-plotting layer.
-
-The quantile-classification helper labels indicator values as
-low_systemic_connectedness, normal, or high_systemic_connectedness. Summary
-tables can then compare observation counts, average returns, volatility, and
-average absolute returns across indicator regimes.
-
-Positive alignment with stress benchmarks or future volatility targets does not
-prove causality. It may reflect shared exposure to volatility, market beta,
-sample-specific crisis periods, or other omitted variables. Phase 3 produces
-diagnostic tables for later research; robustness checks, out-of-sample
-validation, and causal interpretation remain future work.
-
-Phase 4 Visual Diagnostics Workflow
+## Phase 4 Visual Diagnostics Workflow
 
 Phase 4 adds reusable matplotlib plotting functions and an example workflow
-that writes diagnostic figures and tables under outputs/. The purpose is visual
-inspection of whether the graph-lasso Laplacian regime indicator behaves like a
-systemic stress indicator. The plots are exploratory evidence, not proof that
-the indicator is causal or fully validated.
+that writes diagnostic figures and tables under `outputs/`.
 
-The regime indicator time-series plot shows the indicator through time and can
-mark benchmark stress periods. If the hypothesis is plausible, high indicator
-values should often appear near market stress windows, while still allowing for
-false positives and missed events.
+The visual diagnostics include:
 
-Benchmark overlay plots place the regime indicator beside continuous variables
-such as VIX, drawdown, realized volatility, average rolling correlation, and
-average absolute rolling correlation. These plots help inspect co-movement,
-lead-lag patterns, and periods where graph topology and conventional stress
-measures disagree.
+- RI time-series plot with stress markers.
+- RI overlays against VIX, drawdown, realized volatility, average correlation,
+  and average absolute correlation.
+- Graph feature panel.
+- Stress versus non-stress boxplot.
+- RI versus forward-risk scatter plot.
+- Regime-class volatility bar chart.
 
-The graph feature panel shows the underlying rolling graph-Laplacian features
-that feed the indicator. It should be used to check whether average graph
-strength, algebraic connectivity, largest Laplacian eigenvalue share, Laplacian
-Frobenius change, and optional modularity are moving in economically sensible
-ways rather than being dominated by one unstable component.
-
-The stress/non-stress boxplot compares the distribution of the regime indicator
-across benchmark stress labels. Clear separation supports the idea that the
-indicator distinguishes stress from calmer periods, but overlap is expected in
-real market data.
-
-The RI-versus-forward-risk scatter plot compares today's indicator with a
-forward target such as future realized volatility. A positive fitted slope can
-motivate further predictive testing, but it does not establish tradability,
-causality, or out-of-sample reliability.
-
-The regime-class bar chart summarizes return or risk metrics by quantile-based
-indicator classes. It is useful for checking whether high connectedness regimes
-are associated with higher volatility or larger absolute returns.
-
-Visual diagnostics are intentionally not robustness checks. Phase 5 should still
-test sensitivity to asset universes, window lengths, fixed alpha values,
-thresholds, data cleaning choices, and alternative benchmark definitions.
+These figures are exploratory visual evidence. They are not robustness checks
+and do not validate the indicator.
 
 ## Graphical-Lasso Convergence Diagnostics
 
@@ -279,33 +214,21 @@ non-converged window does not necessarily crash the workflow, but it weakens
 confidence in that window's precision matrix and therefore in the partial
 correlation graph and Laplacian features derived from it.
 
-The project records convergence diagnostics for every rolling window. The
-rolling feature table includes:
+The rolling feature table includes:
 
-- `graph_lasso_converged`: whether scikit-learn completed without a
-  `ConvergenceWarning`.
-- `graph_lasso_n_iter`: the solver iteration count reported by scikit-learn.
-- `graph_lasso_alpha`, `graph_lasso_max_iter`, `graph_lasso_tol`,
-  `graph_lasso_enet_tol`, and `graph_lasso_mode`: the solver settings used in
-  that window.
-- `graph_lasso_warning_count`: the number of captured convergence warnings.
-- `graph_lasso_warning_message`: the first captured warning message, if any.
+- `graph_lasso_converged`
+- `graph_lasso_n_iter`
+- `graph_lasso_alpha`
+- `graph_lasso_max_iter`
+- `graph_lasso_tol`
+- `graph_lasso_enet_tol`
+- `graph_lasso_mode`
+- `graph_lasso_warning_count`
+- `graph_lasso_warning_message`
 
 Workflows capture `ConvergenceWarning` messages so repeated rolling fits do not
-spam the terminal. Users can choose how to handle non-convergence through
-`on_non_convergence`:
-
-- `record`: suppress warning spam and record diagnostic columns.
-- `warn`: record diagnostics and emit one summarized warning after the rolling
-  loop.
-- `raise`: stop with an error if any rolling window fails to converge.
-
-Users should inspect `graph_lasso_converged` and
-`graph_lasso_warning_count` before interpreting empirical results. If many
-windows fail to converge, consider increasing `max_iter`, increasing `alpha`
-moderately, checking for highly collinear assets, reducing the asset universe,
-or increasing the rolling window length. Later robustness work may also test
-volatility-normalized or residualized returns.
+spam the terminal. Users can choose whether non-convergence should be recorded,
+warned once, or treated as an error.
 
 Convergence diagnostics are part of model-risk control. They should be reported
 alongside empirical results because unstable precision-matrix estimates can
@@ -314,89 +237,119 @@ change the inferred network topology.
 ## Phase 5 Robustness and Risk-Overlay Layer
 
 Phase 5 adds robustness and research-only risk-overlay diagnostics. It is not a
-trading system, does not connect to a broker, and should not be interpreted as
-evidence that the indicator is profitable or validated.
+trading system, does not connect to a broker, and does not validate the
+indicator.
 
-The motivation for a risk overlay is modest. The current empirical evidence
-suggests that the regime indicator may be more useful as a topology-transition
-or instability feature than as a direct persistent stress-level signal. A risk
-overlay asks whether exposure scaling during high-RI regimes changes realized
-portfolio risk, drawdowns, and risk-adjusted performance. It does not attempt
-to forecast return direction.
+The motivation for a risk overlay is modest. The current empirical evidence is
+more consistent with RI as a topology-transition or instability feature than as
+a direct persistent stress-level signal. A risk overlay asks whether exposure
+scaling during high-RI regimes changes realized portfolio risk, drawdowns, and
+risk-adjusted performance. It does not attempt to forecast return direction.
+
+The first Phase 5 RI overlay run improved several metrics versus the baseline
+equal-weight portfolio:
+
+- Sharpe improved from `0.5720` to `0.6976`.
+- Max drawdown improved from `-0.3308` to `-0.2034`.
+- Annualized volatility improved from `0.1354` to `0.1154`.
+- Calmar improved from `0.2340` to `0.3958`.
+
+Compared with simple benchmark overlays, the RI overlay had the best Sharpe and
+Calmar in this run. Some benchmark overlays, especially VIX, drawdown, and
+realized-volatility overlays, had slightly lower volatility or slightly better
+max drawdown. This is encouraging for the refined risk-overlay hypothesis, but
+it is preliminary and requires robustness and out-of-sample testing.
 
 All overlay tests should be compared against simple baselines. Relevant
 benchmarks include VIX, realized volatility, drawdown, average correlation,
 average absolute correlation, and simple correlation-spectrum measures such as
-the first PCA eigenvalue of the correlation matrix. If the graph-based
-indicator cannot add information beyond simpler variables, its practical value
-is limited even if the graph construction is methodologically interesting.
+the first PCA eigenvalue of the correlation matrix.
 
-Exposure thresholds can be computed in two ways. Full-sample thresholds are
-useful for diagnostics because they show how an overlay behaves when the entire
-sample distribution is known. Expanding thresholds are preferred for realistic
-evaluation because each date uses only prior information. Phase 5 defaults to
+Exposure thresholds can be computed in full-sample mode for diagnostics or in
+expanding mode for more realistic evaluation. Expanding thresholds are
+preferred because each date uses only prior information. Phase 5 defaults to
 expanding thresholds and shifts exposure by one observation before applying it
 to returns to reduce look-ahead bias.
 
 Phase 5 also introduces transition diagnostics. These compare RI against
 changes in benchmark variables and against stress-onset labels, rather than
-only persistent stress labels. This is important because a topology-transition
-feature may spike near the onset or reconfiguration of stress and then fall
-while conventional stress variables remain elevated.
+only persistent stress labels.
 
 Generated Phase 5 results remain exploratory until out-of-sample tests are
 completed. Robustness checks should include alpha grids, rolling-window grids,
 partial-correlation thresholds, non-converged-window exclusions, alternative
-asset universes, combinatorial versus normalized Laplacian features, and signed
-versus absolute partial-correlation networks.
+asset universes, combinatorial versus normalized Laplacian features, signed
+versus absolute partial-correlation networks, transaction costs, and turnover
+analysis.
 
-Interpretation of Graphical Lasso
+## Phase 6 Robustness and Out-of-Sample Evaluation
 
-Graphical lasso estimates a sparse inverse covariance matrix, also called a
-precision matrix. Under Gaussian assumptions, zero off-diagonal entries in the
-precision matrix correspond to conditional independence relationships between
-variables.
+Phase 6 implements a research-grade evaluation framework for the refined
+risk-overlay hypothesis: RI may be useful as a topology-transition feature that
+complements conventional risk indicators, even if it is not validated as a
+persistent stress-level indicator.
 
-In financial return applications, this interpretation should be used carefully.
-Asset returns are not generally Gaussian, and their dependence structure may be
-time-varying, heavy-tailed, and affected by volatility clustering. Therefore,
-outside the Gaussian case, the safer interpretation is that graphical lasso
-provides a sparse estimate of linear conditional-dependence structure through
-partial correlations.
+The controlled robustness grid varies:
 
-For this reason, the regime indicator should not be described as a
-distribution-free causal or conditional-independence estimator. It should be
-described as a systemic connectedness indicator based on the rolling topology of
-sparse partial-correlation networks.
+- graphical-lasso alpha: `0.05`, `0.10`, `0.15`, `0.20`;
+- rolling window length: `63`, `126`, `252` trading days;
+- partial-correlation threshold: `0.00`, `0.03`.
 
-The graphical lasso does not directly generate a graph Laplacian. The pipeline
-is:
-returns → standardized rolling window → sparse precision matrix → partial
-correlation matrix → weighted adjacency matrix → graph Laplacian → spectral and
-topological features
+The Laplacian type remains combinatorial and the network remains based on
+absolute partial correlations. Holding those dimensions fixed keeps Phase 6
+focused on the most important current degrees of freedom without turning the
+project into an unconstrained in-sample optimizer.
 
-Current Validation Status
+For each configuration, the framework can recompute graph features and RI,
+record graphical-lasso convergence, compute stress and transition diagnostics,
+evaluate forward-risk relationships, and compare RI risk overlays against
+simple benchmark overlays. Results are written to `outputs/phase6_tables/`;
+optional robustness heatmaps are written to `outputs/phase6_figures/`.
+
+Phase 6 also adds a walk-forward-style protocol:
+
+- development sample: 2015-07-06 to 2019-12-31;
+- validation sample: 2020-01-01 to 2022-12-31;
+- test sample: 2023-01-01 onward.
+
+Configuration selection is based on validation-period risk-overlay diagnostics,
+not test-period performance. The selection score combines Sharpe, Calmar,
+drawdown reduction, volatility reduction, downside-tail improvement, and a
+turnover penalty. This is still a simple research protocol, but it prevents
+choosing configurations purely because they maximize in-sample Sharpe.
+
+Incremental-information tests evaluate whether RI adds explanatory information
+beyond VIX, realized volatility, drawdown, average correlation, and average
+absolute correlation. The tests cover forward realized volatility, forward max
+drawdown, and stress-onset labels. They report adjusted R-squared, out-of-sample
+R-squared where feasible, coefficient signs, robust/Newey-West-style
+t-statistics, and classification diagnostics for stress-onset labels.
+
+Transaction-cost sensitivity reports average exposure, time in reduced
+exposure, number of exposure changes, annualized turnover proxy, and performance
+after simple cost assumptions of 0, 5, and 10 basis points per unit exposure
+change. These are not full execution-cost models, but they are necessary before
+interpreting any overlay result as economically meaningful.
+
+Phase 6 is still research-only. It does not prove profitability, validate RI as
+a standalone trading signal, or establish that graph topology causes risk
+reduction. Its purpose is to test whether the Phase 5 result survives
+reasonable parameter changes, no-lookahead sample discipline, simple benchmark
+comparisons, and cost/turnover assumptions.
+
+## Current Validation Status
 
 The project currently provides the machinery needed to estimate the graph-based
 regime indicator, construct benchmark stress variables, produce empirical
-diagnostic tables, generate visual diagnostic figures, and run Phase 5
-robustness and research-only risk-overlay diagnostics.
+diagnostic tables, generate visual diagnostic figures, and run Phase 5 and
+Phase 6 research-only risk-overlay diagnostics.
 
-It is not yet a validated recession, crisis, drawdown, or VIX signal.
+It is not yet a validated recession, crisis, drawdown, VIX, or trading signal.
 Dashboards, notebooks, live trading, broker integration, and final empirical
-conclusions are intentionally left out of scope.
+conclusions are intentionally out of scope.
 
-The Phase 3 diagnostics can be used to evaluate whether the graph-lasso
-Laplacian regime indicator:
-
-rises during known stress regimes;
-co-moves with VIX, drawdowns, realized volatility, and correlation benchmarks;
-distinguishes stress from non-stress periods;
-contains predictive information for future volatility, drawdowns, or
-correlation spikes.
-
-Phase 5 outputs should be interpreted as robustness and risk-overlay research,
-not as final validation.
-
-
----
+The updated empirical outputs show mixed stress-level evidence, suggestive
+topology-transition behavior, weak predictive diagnostics, and encouraging but
+preliminary risk-overlay results. The next research step is to interpret Phase
+6 robustness, out-of-sample, incremental-information, and transaction-cost
+outputs, not deployment.

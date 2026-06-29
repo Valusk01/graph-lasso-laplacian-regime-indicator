@@ -427,23 +427,40 @@ The ETF universe mixes equities, sectors, credit, bonds, commodities, and defens
 
 Benchmark labels are imperfect. VIX captures option-implied equity volatility, drawdown captures path-dependent realized loss, realized volatility is backward-looking, and average correlation is unconditional rather than conditional. The combined stress label can remain active after the topology transition has already occurred.
 
-The current results are sample-dependent. There is no robustness grid, no alternative universe analysis, no out-of-sample validation, no walk-forward parameter discipline, and no economic trading evaluation.
+The current Phase 5 results are sample-dependent. Phase 6 now adds the
+machinery for robustness grids, validation/test discipline, incremental
+information tests, and transaction-cost sensitivity, but those outputs still
+need to be interpreted as research diagnostics rather than validation. There is
+still no alternative-universe analysis, no full walk-forward production study,
+and no transaction-cost-aware trading conclusion.
 
 The current indicator uses absolute partial correlations and a combinatorial Laplacian. Signed relationships, normalized Laplacians, alternative spectral features, and feature weighting choices remain open research questions.
 
 ## 12. Recommended Next Quantitative Investigations
 
-1. Rerun all diagnostics excluding the 28 non-converged windows.
-2. Compare results across fixed alpha values such as `0.05`, `0.10`, `0.15`, and `0.20`.
-3. Compare rolling windows such as 63, 126, and 252 trading days.
-4. Test whether RI is better at detecting stress onsets than persistent stress levels.
-5. Create event windows around known market shocks and inspect RI before, during, and after the event.
-6. Compare against simple baselines: VIX, realized volatility, average correlation, average absolute correlation, and rolling drawdown.
-7. Split the sample into development and holdout periods.
-8. Test equity-only, cross-asset, sector-only, and reduced-collinearity universes.
-9. Evaluate whether excluding or down-weighting Frobenius change changes the stress-label results.
-10. Investigate whether normalized Laplacian features behave differently from combinatorial Laplacian features.
-11. Add out-of-sample risk-overlay tests before considering any trading interpretation.
+1. Run and interpret the full Phase 6 24-configuration robustness grid across
+   alpha, window, and partial-correlation threshold settings.
+2. Compare RI overlays against VIX, realized-volatility, drawdown,
+   average-correlation, average-absolute-correlation, and PCA first-eigenvalue
+   baselines across Sharpe, Calmar, volatility, drawdown, turnover, and
+   downside-tail metrics.
+3. Inspect turnover, average exposure, time in reduced-exposure states, and
+   transaction-cost sensitivity at 0, 5, and 10 basis points.
+4. Use the Phase 6 validation/test split to check whether any selected
+   configuration survives out of sample.
+5. Evaluate exclusion of the 28 non-converged graphical-lasso windows across
+   all overlay and incremental-information diagnostics.
+6. Test whether stress-onset labels are more relevant than persistent stress
+   labels.
+7. Test whether RI adds incremental information after controlling for VIX,
+   realized volatility, drawdown, average correlation, and average absolute
+   correlation.
+8. Test alternative ETF universes, including equity-only, sector-only,
+   cross-asset, and reduced-collinearity universes.
+9. Add richer cost and slippage assumptions before drawing any economic
+   conclusion from overlay results.
+10. Only after robustness and OOS evidence is stable, consider whether RI is
+    useful as one component in a broader risk-monitoring system.
 
 ## 13. Research Interpretation and Next Steps
 
@@ -453,53 +470,200 @@ The original persistent stress-level hypothesis is not validated by the current 
 
 The evidence is more consistent with a refined hypothesis: RI may capture topology transitions or instability in the conditional-dependence network. The large spikes around abrupt stress onsets suggest that the indicator may respond to network reconfiguration rather than the sustained level of conventional stress variables. This would explain why RI can be high at the beginning of a shock but low during later periods when VIX, realized volatility, or rolling correlations remain elevated.
 
-Predictive evidence is weak. The indicator has small positive relationships with future realized volatility and some association with worse short-horizon drawdowns, but the R-squared values are too small to support a standalone forecasting or trading claim. The strongest practical interpretation is that high-RI regimes are associated with higher volatility and larger absolute returns, making RI a candidate research feature for risk overlays rather than a direct trading signal.
+Predictive evidence is weak. The indicator has small positive relationships with future realized volatility and some association with worse short-horizon drawdowns, but the R-squared values are too small to support a standalone forecasting or trading claim. High-RI regimes are associated with higher volatility and larger absolute returns, making RI more plausible as a research feature for risk overlays than as a direct directional signal.
 
-The current indicator should not be interpreted as a validated crisis predictor or standalone trading signal. Its most promising role is as a topology-transition feature that may complement conventional risk indicators. The next phase should test this refined hypothesis through robustness checks, baseline comparisons, exclusion of non-converged windows, event studies around stress onsets, and out-of-sample risk-overlay experiments.
+The current indicator should not be interpreted as a validated crisis predictor or standalone trading signal. Its most promising role is as a topology-transition feature that may complement conventional risk indicators. The next research decision is whether the Phase 5 risk-overlay improvement survives robustness checks, baseline comparisons, non-converged-window exclusions, stress-onset event studies, transaction-cost assumptions, and out-of-sample tests.
 
-Phase 5 should focus on quantitative robustness and incremental-information tests:
+## Phase 5 Risk-Overlay Results
 
-1. Exclude the 28 non-converged windows and rerun all key diagnostics.
-2. Test a fixed-alpha grid: `0.05`, `0.10`, `0.15`, and `0.20`.
-3. Test a rolling-window grid: 63, 126, and 252 trading days.
-4. Compare combinatorial Laplacian features with normalized Laplacian features.
-5. Compare absolute partial-correlation networks with signed partial-correlation network variants.
-6. Compare RI against simple baselines: VIX, realized volatility, drawdown, average correlation, average absolute correlation, and the first PCA eigenvalue of the correlation matrix.
-7. Test stress-onset labels separately from persistent stress labels.
-8. Run event studies around known market shocks.
-9. Test whether RI adds incremental information in regressions controlling for VIX, realized volatility, drawdown, and average correlation.
-10. Test risk-overlay rules out of sample before considering any trading application.
+Phase 5 tested a simple research-only exposure-scaling overlay. The overlay
+reduces equal-weight ETF portfolio exposure when RI is high, using expanding
+quantile thresholds and a one-period exposure shift to reduce look-ahead bias.
+This is not a live trading system and should not be interpreted as validation
+or proof of profitability.
 
-The next research decision is therefore not whether the current RI is "validated"; it is not. The next decision is whether the topology-transition interpretation survives robustness checks and adds information beyond simpler stress proxies.
+Baseline versus RI overlay metrics:
 
-## Phase 5 Research Plan
+| Metric | Baseline | RI overlay | Change |
+| --- | ---: | ---: | ---: |
+| Annualized return | 0.0774 | 0.0805 | 0.0031 |
+| Annualized volatility | 0.1354 | 0.1154 | -0.0200 |
+| Sharpe | 0.5720 | 0.6976 | 0.1257 |
+| Sortino | 0.6674 | 0.8785 | 0.2111 |
+| Max drawdown | -0.3308 | -0.2034 | 0.1275 |
+| Calmar | 0.2340 | 0.3958 | 0.1617 |
+| Mean absolute return | 0.0056 | 0.0051 | -0.0006 |
+| Worst 5% return | -0.0123 | -0.0114 | 0.0009 |
 
-Phase 5 implements the next research step implied by the updated empirical
-interpretation: test whether RI is robust across reasonable graph settings,
-whether it behaves more like a topology-transition feature than a persistent
-stress-level indicator, and whether it has any incremental risk-overlay value
-relative to simple benchmarks.
+In this first run, the RI overlay improved Sharpe, max drawdown, volatility,
+and Calmar versus the baseline equal-weight portfolio. The cumulative-return
+figure shows a similar long-run wealth path with materially smoother behavior
+during the COVID drawdown. The drawdown figure shows the most visible benefit:
+the RI overlay reduced the depth of the largest drawdown.
 
-The planned diagnostics are intentionally research-only. They should not be
-read as a trading system or validation claim. The Phase 5 workflow should
-compare an RI-based exposure overlay against a baseline equal-weight portfolio
-and against simple benchmark overlays based on VIX, realized volatility,
-drawdown, average correlation, and average absolute correlation. Any apparent
-improvement must then be checked out of sample before it can be interpreted as
-economically meaningful.
+Comparison with simple benchmark overlays:
 
-The most important Phase 5 tests are:
+| Strategy | Volatility | Sharpe | Max drawdown | Calmar |
+| --- | ---: | ---: | ---: | ---: |
+| Baseline | 0.1354 | 0.5720 | -0.3308 | 0.2340 |
+| RI overlay | 0.1154 | 0.6976 | -0.2034 | 0.3958 |
+| VIX overlay | 0.1000 | 0.6448 | -0.1905 | 0.3383 |
+| Realized-volatility overlay | 0.1040 | 0.6794 | -0.2000 | 0.3534 |
+| Average-correlation overlay | 0.1086 | 0.5471 | -0.2527 | 0.2350 |
+| Average-absolute-correlation overlay | 0.1104 | 0.6266 | -0.2006 | 0.3449 |
+| Drawdown overlay | 0.0997 | 0.6836 | -0.1941 | 0.3513 |
 
-1. Exclude the 28 non-converged graphical-lasso windows and rerun diagnostics.
-2. Test fixed alpha values of `0.05`, `0.10`, `0.15`, and `0.20`.
-3. Test rolling windows of 63, 126, and 252 trading days.
-4. Compare combinatorial and normalized Laplacian variants.
-5. Compare absolute and signed partial-correlation network variants.
-6. Compare RI against VIX, realized volatility, drawdown, average correlation,
-   average absolute correlation, and PCA first-eigenvalue baselines.
-7. Test stress-onset labels separately from persistent stress labels.
-8. Run event studies around known market shocks.
-9. Test whether RI adds information after controlling for conventional stress
-   variables.
-10. Run out-of-sample risk-overlay experiments before considering any trading
-    application.
+The RI overlay had the best Sharpe and Calmar among the tested overlays in
+this run. However, VIX, drawdown, and realized-volatility overlays produced
+lower volatility and slightly better max drawdown. This is encouraging for the
+refined RI risk-overlay hypothesis, but it also shows that simpler benchmark
+overlays remain highly competitive.
+
+The RI exposure summary shows that exposure was reduced on about `21.8%` of RI
+observations and cut to `0.5` or lower on about `12.2%` of observations. This
+means the overlay is not always defensive; it is active in selected high-RI
+states. Turnover and transaction costs have not yet been evaluated.
+
+The non-converged-window exclusion diagnostic is reassuring but still
+preliminary. Using all windows, the convergence rate is `98.99%`; using only
+converged windows leaves the main contemporaneous relationships qualitatively
+similar. For example, the stress/non-stress RI difference is `-0.7330` for all
+windows and `-0.7176` for converged windows only. Future robustness checks
+should still exclude non-converged windows in all overlay tests.
+
+### Research Interpretation of Phase 5
+
+The first Phase 5 result is encouraging for the refined risk-overlay
+hypothesis. The RI overlay improved several risk-adjusted metrics relative to
+the baseline equal-weight portfolio. This is more consistent with RI being
+useful for dynamic exposure management than for direct directional forecasting.
+
+However, the result remains exploratory because it is one sample, one universe,
+one parameterization, and one overlay rule. It still requires out-of-sample
+validation, transaction-cost assumptions, turnover analysis, and robustness
+across parameter grids. The result should be treated as suggestive evidence
+that RI may complement conventional risk indicators, not as proof that RI is a
+tradable signal.
+
+### What Phase 5 Does Not Prove
+
+Phase 5 does not prove profitability. It does not validate RI as a standalone
+trading signal. It does not prove that graph topology causes risk reduction. It
+does not show robustness across all reasonable graph-lasso, Laplacian,
+threshold, universe, or overlay parameter choices. It also does not replace
+simpler overlays unless robustness tests confirm incremental value beyond VIX,
+realized volatility, drawdown, average correlation, average absolute
+correlation, and PCA-style correlation-spectrum baselines.
+
+## Phase 6 Robustness and Out-of-Sample Evaluation Framework
+
+Phase 6 implements the next research layer needed to test the refined
+risk-overlay hypothesis. The goal is no longer to show that RI is simply high
+during persistent stress labels. The sharper question is whether RI provides
+robust incremental risk-management information beyond simple VIX, volatility,
+drawdown, and correlation overlays.
+
+The Phase 6 framework adds a controlled robustness grid over:
+
+- graphical-lasso alpha values: `0.05`, `0.10`, `0.15`, `0.20`;
+- rolling windows: `63`, `126`, `252` trading days;
+- partial-correlation thresholds: `0.00`, `0.03`.
+
+The grid keeps the Laplacian definition fixed as combinatorial and the network
+definition fixed as absolute partial correlations. That restraint is
+important: Phase 6 is designed to test stability across reasonable parameter
+choices, not to optimize every modeling decision until the in-sample result
+looks good.
+
+For each configuration, the framework can recompute graph features and RI,
+record graphical-lasso convergence rates, compute contemporaneous and
+transition diagnostics, evaluate forward-risk relationships, compare RI
+overlay performance with simple benchmark overlays, and summarize the result
+in dedicated Phase 6 output tables.
+
+The out-of-sample protocol separates the sample into:
+
+- development: 2015-07-06 to 2019-12-31;
+- validation: 2020-01-01 to 2022-12-31;
+- test: 2023-01-01 onward.
+
+Configuration selection is based on validation-period diagnostics only. The
+selection score combines Sharpe, Calmar, drawdown reduction, volatility
+reduction, downside-tail improvement, and a turnover penalty. Test-period
+results are then reported only for the frozen selected configuration. This
+does not eliminate all research degrees of freedom, but it is a substantial
+improvement over judging the overlay only on full-sample performance.
+
+Phase 6 also adds incremental-information tests. These ask whether RI and its
+graph components add explanatory information beyond VIX, realized volatility,
+drawdown, average correlation, and average absolute correlation for future
+realized volatility, future max drawdown, and stress-onset labels. The tests
+report adjusted R-squared, out-of-sample R-squared where feasible, coefficient
+signs, Newey-West-style t-statistics, and classification diagnostics for
+stress-onset labels.
+
+Finally, Phase 6 adds turnover and transaction-cost sensitivity. The overlay
+is evaluated at 0, 5, and 10 basis points per unit exposure change, alongside
+average exposure, time in reduced exposure, number of exposure changes, and an
+annualized turnover proxy. This is still a simplified cost model, but it
+prevents the research from ignoring one of the most obvious ways an overlay
+can look attractive on paper and fail economically.
+
+Phase 6 should be interpreted as a robustness and falsification framework. If
+the RI overlay only works for one alpha, one window, one threshold, or one
+sample split, the refined risk-overlay hypothesis is weak. If the result is
+stable across the grid, survives validation/test separation, adds information
+beyond simple benchmarks, and remains plausible after costs and turnover, then
+the project would have stronger evidence that RI is useful as a research
+feature for risk management. Even then, it would still not prove causality or
+justify a standalone trading strategy.
+
+### Initial Phase 6 Smoke Output
+
+The default Phase 6 example uses saved Phase 4 outputs as a fast smoke test.
+It is not the full 24-configuration robustness grid. The cached configuration
+is `alpha = 0.10`, `window = 126`, and partial-correlation threshold
+`0.000001`.
+
+In the test sample beginning in 2023, the cached RI overlay improved the
+baseline equal-weight portfolio on the main risk-adjusted metrics:
+
+| Metric | Baseline test | RI overlay test | Change |
+| --- | ---: | ---: | ---: |
+| Sharpe | 1.5784 | 1.8374 | 0.2589 |
+| Max drawdown | -0.1322 | -0.0969 | 0.0353 |
+| Annualized volatility | 0.1089 | 0.0938 | -0.0151 |
+| Calmar | 1.3003 | 1.7788 | 0.4784 |
+
+This is encouraging, but it should be treated as a smoke result rather than a
+robust finding. Only one cached configuration is present in the default run, so
+there is no genuine parameter-grid selection in that output.
+
+Against simple benchmark overlays in the same test sample, the RI overlay had
+the highest Sharpe and Calmar in the cached smoke run. VIX and RI overlays had
+almost identical max drawdowns, while several simple overlays remained
+competitive. This means the RI result is promising but must still be compared
+systematically against simpler risk variables across the full grid.
+
+Transaction-cost sensitivity materially weakens the full-sample RI overlay:
+
+| Cost assumption | Sharpe | Calmar |
+| --- | ---: | ---: |
+| 0 bps | 0.6976 | 0.3958 |
+| 5 bps | 0.6335 | 0.3584 |
+| 10 bps | 0.5698 | 0.3216 |
+
+At 10 bps, the full-sample Sharpe is roughly back to the baseline level. This
+does not invalidate the overlay, but it shows that turnover and implementation
+costs are central to the research question.
+
+The incremental-information smoke tests are mixed. Adding RI modestly improves
+in-sample adjusted R-squared for forward realized volatility and forward max
+drawdown, and graph components improve short-horizon realized-volatility OOS
+R-squared in this run. However, some longer-horizon OOS R-squared values
+deteriorate when graph components are added. Stress-onset AUC improves from
+about `0.792` for the baseline model to about `0.835` with graph components
+in-sample, but OOS AUC remains close to `0.798`. The correct interpretation is
+that RI and graph features may contain incremental information, but the current
+evidence is not uniformly strong and requires full-grid and out-of-sample
+confirmation.

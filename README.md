@@ -2,7 +2,10 @@
 
 Research-grade Python tools for testing whether rolling graphical-lasso
 Laplacian features can behave like a systemic stress or recession regime
-indicator.
+indicator. The project currently includes the Phase 1 through Phase 6 research
+workflow: core graph features, benchmark data, empirical diagnostics, visual
+diagnostics, research-only risk-overlay analysis, and robustness/out-of-sample
+evaluation.
 
 ## Research Hypothesis
 
@@ -27,6 +30,9 @@ regime indicator.
   that writes diagnostic tables and figures.
 - Phase 5: robustness, topology-transition diagnostics, and research-only
   risk-overlay evaluation against simple benchmark overlays.
+- Phase 6: controlled robustness grid, walk-forward-style out-of-sample
+  selection, incremental-information tests, and transaction-cost/turnover
+  sensitivity for the risk-overlay hypothesis.
 
 Not implemented yet: dashboards, notebooks, live trading, broker integration,
 or final empirical conclusions.
@@ -152,6 +158,57 @@ Output figures:
 - `outputs/phase5_figures/exposure_over_time.png`
 - `outputs/phase5_figures/drawdown_baseline_vs_ri_overlay.png`
 
+Phase 5 writes to `outputs/phase5_tables/` and `outputs/phase5_figures/`.
 Generated Phase 5 outputs are also ignored by git. Interpret them as
-exploratory diagnostics until robustness checks and out-of-sample tests are
-complete.
+exploratory diagnostics until robustness checks, transaction-cost assumptions,
+turnover analysis, and out-of-sample tests are complete.
+
+## Run The Phase 6 Research Evaluation
+
+```bash
+.venv/bin/python examples/run_phase6_phd_research_evaluation.py
+```
+
+The default run is a fast smoke workflow that reuses the saved Phase 4
+`graph_regime_indicator.csv` and convergence diagnostics. To recompute the
+one-configuration quick grid:
+
+```bash
+.venv/bin/python examples/run_phase6_phd_research_evaluation.py --recompute-quick
+```
+
+To run the controlled 24-configuration grid:
+
+```bash
+.venv/bin/python examples/run_phase6_phd_research_evaluation.py --full-grid
+```
+
+This workflow reads saved Phase 4 tables from `outputs/tables/`, runs
+robustness and out-of-sample diagnostics, evaluates incremental information
+beyond simple benchmarks, and adds transaction-cost sensitivity for the RI
+overlay. With `--recompute-quick` or `--full-grid`, it recomputes RI for the
+selected Phase 6 configurations.
+
+Output tables:
+
+- `outputs/phase6_tables/robustness_grid_summary.csv`
+- `outputs/phase6_tables/robustness_overlay_metrics.csv`
+- `outputs/phase6_tables/robustness_convergence_summary.csv`
+- `outputs/phase6_tables/robustness_benchmark_comparison.csv`
+- `outputs/phase6_tables/oos_selection_summary.csv`
+- `outputs/phase6_tables/oos_test_performance.csv`
+- `outputs/phase6_tables/oos_overlay_comparison.csv`
+- `outputs/phase6_tables/incremental_information_tests.csv`
+- `outputs/phase6_tables/transaction_cost_sensitivity.csv`
+
+Optional output figures:
+
+- `outputs/phase6_figures/robustness_sharpe_heatmap.png`
+- `outputs/phase6_figures/robustness_max_drawdown_heatmap.png`
+- `outputs/phase6_figures/robustness_calmar_heatmap.png`
+
+Phase 6 is research-only. It is intended to test whether the RI overlay has
+robust incremental risk-management value beyond simple VIX, volatility,
+drawdown, and correlation overlays. It is not a trading system, not a broker
+integration, and not validation of a profitable strategy. Generated Phase 6
+tables and figures are ignored by git.
