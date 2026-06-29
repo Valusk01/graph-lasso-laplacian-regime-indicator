@@ -218,4 +218,5 @@ def _safe_z(series: pd.Series) -> pd.Series:
     mean = numeric.mean(skipna=True)
     std = numeric.std(skipna=True, ddof=0)
     if not np.isfinite(mean) or not np.isfinite(std) or std <= 0:
-   
+        return pd.Series(0.0, index=series.index, dtype=float)
+    return ((numeric - mean) / std).replace([np.inf, -np.inf], np.nan).fillna(0.0)

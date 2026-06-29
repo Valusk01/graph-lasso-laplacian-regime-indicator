@@ -805,3 +805,159 @@ tests, then the project must show that graph-lasso Laplacian features add
 incremental value beyond simpler correlation-spectrum information. The Phase 7
 result is therefore encouraging for component research, but it also raises the
 standard of evidence for the graph-lasso layer.
+
+## Phase 8 Research Consolidation
+
+Phase 8 consolidates the post-Phase-7 research direction. The question is no
+longer whether the original composite RI should be accepted as-is. The more
+precise question is which transparent information set or overlay object is the
+best candidate for continued research: RI, graph components, transition
+features, PCA features, PCA plus graph features, or a lower-turnover variant.
+
+### PCA-Only vs Graph-Only vs PCA-Plus-Graph
+
+The corrected Phase 8 information-set comparison supports the Phase 7 finding
+that PCA and graph components are more useful together than the composite RI
+alone for several targets.
+
+| Target | Best OOS information set | OOS value |
+| --- | --- | ---: |
+| 5d future realized volatility R2 | benchmarks + PCA + graph components | 0.2483 |
+| 21d future realized volatility R2 | benchmarks + PCA + graph components | 0.1310 |
+| 5d future max drawdown R2 | graph components only | 0.0349 |
+| 21d future max drawdown R2 | RI only | 0.0084 |
+| Stress-onset OOS AUC | benchmarks + PCA + graph components | 0.8890 |
+
+The strongest evidence is for stress-onset classification and future realized
+volatility. Drawdown prediction remains weak and unstable. The fact that
+PCA-plus-graph is best for stress-onset OOS AUC and realized-volatility OOS R2
+is suggestive, but it also reinforces that PCA is a strong benchmark. Graph
+features need to justify themselves as incremental information beyond the
+correlation spectrum, not merely as a more complex version of it.
+
+### Algebraic Connectivity Diagnostic
+
+Phase 8 investigated why excluding algebraic connectivity improved overlay
+Sharpe in Phase 7. The evidence suggests algebraic connectivity is not useless,
+but it is not a strong standalone overlay feature in this configuration.
+
+Algebraic connectivity is strongly correlated with RI (`0.711`) and moderately
+correlated with average graph strength and weighted edge density (`0.594` each).
+It is only weakly correlated with VIX (`0.096`), drawdown (`0.076`), average
+absolute correlation (`0.042`), realized volatility (`0.006`), and average
+correlation (`-0.008`). Its stress-onset AUC is only `0.549`, close to weak
+classification value.
+
+Overlay diagnostics are consistent with the ablation result:
+
+| Overlay | Sharpe | Calmar | Max drawdown | Turnover |
+| --- | ---: | ---: | ---: | ---: |
+| All graph components | 0.7375 | 0.4030 | -0.2121 | 9.15 |
+| Excluding algebraic connectivity | 0.7919 | 0.4358 | -0.2121 | 10.19 |
+| Algebraic connectivity only | 0.6573 | 0.3443 | -0.2257 | 3.92 |
+| Connectivity block with algebraic connectivity | 0.7122 | 0.3862 | -0.2205 | 4.44 |
+| Connectivity block without algebraic connectivity | 0.6960 | 0.3382 | -0.2509 | 3.05 |
+
+The most plausible interpretation is that algebraic connectivity is partly
+redundant with broader graph-strength information and may dilute overlay timing
+when included in an equal-weight component score. It may still contain useful
+topological information, but Phase 8 does not support treating it as a
+standalone overlay driver.
+
+### Turnover-Reduction Results
+
+Turnover remains a central practical constraint. Phase 8 tested weekly
+rebalancing, smoothing, hysteresis, cooldown, and combined smoothing plus
+hysteresis variants.
+
+The best low-turnover screen by Calmar was `pca_first_eigenvalue_change` with
+the `smoothed_5d_hysteresis` rule:
+
+| Score / variant | Sharpe | Calmar | Max drawdown | Turnover |
+| --- | ---: | ---: | ---: | ---: |
+| PCA first eigenvalue change / smoothed 5d hysteresis | 0.8090 | 0.4610 | -0.1978 | 8.04 |
+| PCA first eigenvalue change / smoothed 5d | 0.8506 | 0.4530 | -0.2172 | 10.12 |
+| RI / cooldown 5d | 0.7126 | 0.4406 | -0.1827 | 5.35 |
+| Graph components equal weight / hysteresis | 0.7604 | 0.4227 | -0.1994 | 4.82 |
+| PCA plus graph / smoothed 5d hysteresis | 0.7565 | 0.4162 | -0.1958 | 4.11 |
+
+This is important because the high-turnover transition score was attractive in
+earlier phases but costly. Phase 8 shows that smoother or hysteresis-based
+rules can preserve much of the risk-overlay benefit with materially lower
+turnover. The result is encouraging for a risk-overlay research direction, not
+for a live trading claim.
+
+### Rolling-Origin OOS Results
+
+The yearly rolling-origin OOS evaluation is stricter than the single-sample
+overlay diagnostics. Each test year uses only the preceding selection period
+to set thresholds.
+
+The leading rolling-origin candidates at 0 bps were:
+
+| Candidate | Mean Sharpe | Mean Calmar | Mean max drawdown | Turnover | Positive-Sharpe years |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Excluding algebraic connectivity | 1.0083 | 1.6798 | -0.1088 | 12.74 | 0.83 |
+| Graph components equal weight | 0.9439 | 1.4832 | -0.1082 | 9.70 | 0.83 |
+| Transition score | 0.9058 | 1.5613 | -0.1096 | 24.56 | 0.83 |
+| RI | 0.8965 | 1.6179 | -0.1043 | 14.22 | 0.83 |
+| Best low-turnover score | 0.8786 | 1.3211 | -0.1137 | 8.37 | 0.83 |
+| PCA plus graph score | 0.8530 | 1.4518 | -0.1034 | 24.70 | 0.83 |
+| PCA score | 0.8047 | 1.2661 | -0.1166 | 13.19 | 0.67 |
+
+The year-by-year table shows a shared weakness: 2022 is negative for all
+candidates. This means the overlay evidence is not uniformly strong across
+every regime. The results are not simply a COVID-only artifact, because several
+candidates perform well in 2021, 2023, 2024, and 2025, but 2022 is a clear
+stress test that prevents overclaiming.
+
+At 10 bps, the excluding-algebraic-connectivity score still has the higher
+average Sharpe (`0.8921`) than the dynamically selected low-turnover score
+(`0.8114`). The low-turnover candidate does reduce turnover, but the corrected
+rolling-origin result no longer supports treating it as the leading
+cost-adjusted object.
+
+### Final Object Selection
+
+The Phase 8 selection matrix ranks `excluding_algebraic_connectivity_score`
+first, followed by the equal-weight graph component score and RI. The dynamic
+low-turnover candidate is useful as a turnover-control reference but is not the
+top-ranked candidate after the rolling-origin correction:
+
+| Candidate | OOS Sharpe | OOS Calmar | OOS max drawdown | Turnover | 10 bps Sharpe |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Excluding algebraic connectivity | 1.0083 | 1.6798 | -0.1088 | 12.74 | 0.8921 |
+| Graph components equal weight | 0.9439 | 1.4832 | -0.1082 | 9.70 | 0.8548 |
+| RI | 0.8965 | 1.6179 | -0.1043 | 14.22 | 0.7564 |
+| Best low-turnover score | 0.8786 | 1.3211 | -0.1137 | 8.37 | 0.8114 |
+| Transition score | 0.9058 | 1.5613 | -0.1096 | 24.56 | 0.6719 |
+| PCA plus graph score | 0.8530 | 1.4518 | -0.1034 | 24.70 | 0.6258 |
+| PCA score | 0.8047 | 1.2661 | -0.1166 | 13.19 | 0.6951 |
+
+The recommended research interpretation is:
+
+- keep the original RI as an interpretable baseline, not the final object;
+- use PCA-plus-graph models for stress-onset classification and volatility
+  prediction research;
+- use the excluding-algebraic-connectivity graph score as the leading
+  no-cost and cost-adjusted overlay candidate in this run;
+- keep the best low-turnover variant as a secondary candidate because it
+  reduces turnover, but do not treat it as the leading cost-adjusted object;
+- continue treating PCA as a strong benchmark that graph features must beat or
+  complement.
+
+### What Phase 8 Can And Cannot Claim
+
+Phase 8 strengthens the topology-transition/risk-overlay hypothesis. The
+evidence is now more consistent with component-level graph and PCA information
+being useful for risk management than with the original composite RI being a
+validated stress-level indicator.
+
+It still does not validate a trading strategy. It does not prove profitability,
+causality, or universal robustness. The results remain conditional on this ETF
+universe, this sample, the saved graph-lasso configuration, the current
+transaction-cost proxy, and the current candidate-score definitions. The next
+research step should test alternative universes, stricter walk-forward
+normalization of component scores, more realistic transaction-cost and turnover
+assumptions, and whether the Phase 8 leaders retain value after controlling
+directly for PCA features and conventional risk benchmarks.

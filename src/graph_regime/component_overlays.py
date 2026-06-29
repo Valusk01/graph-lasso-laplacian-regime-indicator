@@ -181,4 +181,17 @@ def _add_baseline_differences(metrics: pd.DataFrame) -> pd.DataFrame:
     output = metrics.copy()
     baseline = output.loc[output["strategy"] == "baseline"]
     if baseline.empty:
-        
+        return output
+    baseline_row = baseline.iloc[0]
+    for column in [
+        "annualized_return",
+        "annualized_volatility",
+        "sharpe",
+        "sortino",
+        "max_drawdown",
+        "calmar",
+        "worst_5pct_return",
+    ]:
+        if column in output:
+            output[f"{column}_minus_baseline"] = output[column] - baseline_row[column]
+    return output

@@ -15,6 +15,8 @@ The project now implements:
   transaction-cost, and turnover diagnostics.
 - Phase 7: PCA/correlation-spectrum baselines and component-level graph
   diagnostics.
+- Phase 8: research consolidation across PCA, graph components, turnover
+  controls, rolling-origin OOS, and final candidate selection.
 
 ## Research Hypothesis
 
@@ -389,12 +391,55 @@ project should treat correlation-spectrum structure as a stronger benchmark and
 ask whether graph-lasso Laplacian features add incremental information after
 controlling for PCA modes.
 
+## Phase 8 Research Consolidation
+
+Phase 8 narrows the research question from "does RI work?" to "which
+transparent information set is most defensible as the final research object?"
+It compares benchmarks, RI, PCA features, graph components, and PCA-plus-graph
+models on the same forward-risk and stress-onset targets.
+
+The information-set comparison is intentionally simple: OLS diagnostics for
+future realized volatility and drawdown targets, and linear-probability-style
+classification diagnostics for stress-onset labels. In-sample metrics are
+diagnostics only. OOS metrics use the same development/validation/test
+discipline as earlier phases.
+
+Phase 8 also isolates algebraic connectivity because Phase 7 suggested that
+excluding it improved overlay Sharpe. The diagnostic table checks whether
+algebraic connectivity is redundant with graph strength, weakly related to
+stress-onset classification, or harmful for overlay timing.
+
+Turnover-reduction overlays test whether the signal survives more realistic
+implementation rules: weekly rebalancing, score smoothing, hysteresis,
+cooldown periods, and combined smoothing plus hysteresis. A lower-turnover
+rule is not considered better unless it preserves drawdown or Calmar benefit
+after simple transaction-cost assumptions.
+
+Rolling-origin OOS evaluation tests candidate final objects year by year. Each
+test year uses only the preceding selection period to set thresholds. This is
+not a live trading system, but it is stricter than a single full-sample overlay
+backtest and helps identify whether results are driven by one regime such as
+COVID.
+
+The final candidate-selection matrix compares RI, graph-component scores,
+transition scores, PCA scores, PCA-plus-graph scores, the
+excluding-algebraic-connectivity score, and the best low-turnover variant. The
+matrix includes OOS Sharpe, Calmar, max drawdown, Sortino, worst-tail return,
+stress-onset AUC, volatility-prediction R-squared, turnover, 10 bps
+cost-adjusted Sharpe, interpretability, PCA dependence, graph-component
+dependence, and robustness across years.
+
+Phase 8 remains research-only. A favorable candidate-selection result is
+preliminary robustness evidence, not validation of a crisis predictor or
+profitable trading strategy.
+
 ## Current Validation Status
 
 The project currently provides the machinery needed to estimate the graph-based
 regime indicator, construct benchmark stress variables, produce empirical
 diagnostic tables, generate visual diagnostic figures, and run Phase 5 through
-Phase 7 research-only risk-overlay and component diagnostics.
+Phase 8 research-only risk-overlay, component, PCA, turnover, and rolling-origin
+diagnostics.
 
 It is not yet a validated recession, crisis, drawdown, VIX, or trading signal.
 Dashboards, notebooks, live trading, broker integration, and final empirical
@@ -403,5 +448,6 @@ conclusions are intentionally out of scope.
 The updated empirical outputs show mixed stress-level evidence, suggestive
 topology-transition behavior, weak predictive diagnostics, and encouraging but
 preliminary risk-overlay results. The next research step is to interpret Phase
-6 and Phase 7 robustness, out-of-sample, incremental-information,
-transaction-cost, PCA-baseline, and component-ablation outputs, not deployment.
+6 through Phase 8 robustness, out-of-sample, incremental-information,
+transaction-cost, PCA-baseline, component-ablation, and rolling-origin outputs,
+not deployment.

@@ -61,4 +61,6 @@ def test_component_overlay_evaluation_outputs_metrics() -> None:
 
     assert {"baseline", "regime_indicator"} <= set(comparison["signal"])
     assert set(costs["cost_bps"]) == {0.0, 5.0}
-    as
+    assert "sharpe" in comparison.columns
+    n_obs = comparison.set_index("signal")["n_obs"]
+    assert n_obs["baseline"] == n_obs["regime_indicator"]
